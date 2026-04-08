@@ -1,0 +1,16 @@
+# QA-DLC session artifacts
+# Uncomment lines below to exclude AI session files from git history.
+# By default they are tracked so teams have a full audit trail.
+
+# aidlc-docs/qa-state.md
+# aidlc-docs/audit.md
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor artifacts
+.idea/
+.vscode/
+*.swp
+*.swo
