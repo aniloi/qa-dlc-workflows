@@ -20,7 +20,7 @@ Before you begin, ensure you have:
   - At least one existing `.feature` file (used as a style reference)
 - User stories available as:
   - Markdown files in `aidlc-docs/inception/user-stories/`, **or**
-  - A Jira project key (requires MCP Atlassian configured in your assistant), **or**
+  - A Jira project key (requires **MCP Atlassian** configured and active in your assistant — see [Jira Integration Setup](#jira-integration-setup) below), **or**
   - A folder path you'll specify at runtime
 
 ---

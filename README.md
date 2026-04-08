@@ -276,6 +276,19 @@ The assistant will automatically:
   - Cucumber step definition Java classes (or equivalent)
   - At least one existing `.feature` file to use as a style reference
   - A `aidlc-docs/inception/user-stories/` directory (or a Jira project key)
+- **Jira mode only**: the MCP Atlassian server must be configured in your AI assistant (see [MCP Connections](#mcp-connections) below)
+
+---
+
+## MCP Connections
+
+Certain QA-DLC features require MCP (Model Context Protocol) servers to be active in your AI assistant:
+
+| Feature | Required MCP | Notes |
+|---|---|---|
+| Jira story input mode (`CLM-123`, `PROJ-456`, etc.) | **MCP Atlassian** | The assistant calls Jira via MCP to fetch issue content. Without it, Jira mode silently fails — use the folder or `user-stories/` input modes instead. |
+
+> **How to configure**: MCP setup varies by assistant. See your assistant's documentation for how to add and enable MCP servers. For a working Jira MCP config example, see the [Setup Guide](docs/SETUP_GUIDE.md#jira-integration-setup).
 
 ---
 
@@ -337,7 +350,7 @@ Verify that your step definitions path is discoverable from the repo root. On fi
 The AI will check for `aidlc-docs/qa-state.md` at startup and offer to resume. If it doesn't, manually say: `Resume the QA-DLC session from qa-state.md`.
 
 **Jira integration isn't working.**
-Jira mode requires the MCP Atlassian tool to be configured in your AI assistant. See your assistant's documentation for MCP server setup.
+Jira mode requires the MCP Atlassian server to be configured and active in your AI assistant. Confirm the server is running, your credentials are valid, and the Jira key format is correct (e.g., `PROJ-123`). See [MCP Connections](#mcp-connections) and the [Jira Integration Setup](docs/SETUP_GUIDE.md#jira-integration-setup) section of the Setup Guide.
 
 ---
 
