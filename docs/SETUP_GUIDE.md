@@ -9,6 +9,7 @@ This guide walks you through a complete setup of QA-DLC Workflows in your automa
 Before you begin, ensure you have:
 
 - An AI coding assistant with support for instruction/rules files:
+  - [Kiro](https://kiro.dev/) — uses `.kiro/steering/`
   - [Claude Code](https://claude.ai/code) — uses `CLAUDE.md`
   - [GitHub Copilot](https://github.com/features/copilot) — uses `.github/copilot-instructions.md`
   - [Cursor](https://www.cursor.com/) — uses `.cursor/rules/`
@@ -68,6 +69,50 @@ Verify the result:
 ---
 
 ## Step 3 — Install for Your Agent
+
+### Kiro
+
+Kiro uses [Steering Files](https://kiro.dev/docs/steering/). The core workflow goes in `.kiro/steering/` and the rule details go under `.kiro/` directly — **not** in `.qa-dlc-rule-details/` at the project root.
+
+**macOS/Linux:**
+```bash
+mkdir -p <your-project-root>/.kiro/steering
+cp -R qa-dlc-rules/qa-dlc-core <your-project-root>/.kiro/steering/
+cp -R qa-dlc-rules/qa-dlc-rule-details <your-project-root>/.kiro/
+```
+
+**Windows (PowerShell):**
+```powershell
+New-Item -ItemType Directory -Force -Path "<your-project-root>\.kiro\steering"
+Copy-Item -Recurse "qa-dlc-rules\qa-dlc-core" "<your-project-root>\.kiro\steering\"
+Copy-Item -Recurse "qa-dlc-rules\qa-dlc-rule-details" "<your-project-root>\.kiro\"
+```
+
+**Windows (CMD):**
+```cmd
+mkdir <your-project-root>\.kiro\steering
+xcopy qa-dlc-rules\qa-dlc-core <your-project-root>\.kiro\steering\qa-dlc-core\ /E /I
+xcopy qa-dlc-rules\qa-dlc-rule-details <your-project-root>\.kiro\qa-dlc-rule-details\ /E /I
+```
+
+Verify the layout:
+```
+<your-project-root>/
+└── .kiro/
+    ├── steering/
+    │   └── qa-dlc-core/
+    │       └── core-workflow.md
+    └── qa-dlc-rule-details/
+        ├── common/
+        ├── discovery/
+        └── execution/
+```
+
+> Open the Steering Files panel in Kiro IDE and confirm `core-workflow` appears under **Workspace**. Run Kiro in **Vibe mode** — if nudged to switch to spec mode, select **No**.
+
+> For Kiro CLI: run `kiro-cli`, then `/context show`, and confirm entries for `.kiro/steering/qa-dlc-core`.
+
+---
 
 ### Claude Code
 
@@ -244,11 +289,14 @@ The assistant will pick up from where it left off.
 
 | Problem | Solution |
 |---|---|
-| AI ignores the workflow | Confirm `core-workflow.md` contents are fully pasted (not just referenced) in your agent's instruction file |
-| AI writes files without showing a plan | Confirm `.qa-dlc-rule-details/` is at your project root with all subdirectories present |
+| AI ignores the workflow | Confirm `core-workflow.md` contents are fully loaded in your agent's instruction/steering file |
+| AI writes files without showing a plan | Confirm rule details directory is present with all subdirectories (`common/`, `discovery/`, `execution/`) |
 | Step definitions not found | Confirm they exist under your `src/test/` tree; on first run the AI will ask to confirm the path |
 | Jira key not resolving | Confirm MCP Atlassian is configured and the key format is valid (e.g., `PROJ-123`) |
 | Session lost after restart | Run: `Resume the QA-DLC session from qa-state.md` |
+| **Kiro**: workflow not activating | Open Steering Files panel and confirm `core-workflow` appears under **Workspace**; verify `.kiro/steering/qa-dlc-core/core-workflow.md` exists |
+| **Kiro**: rule details not loading | Confirm `qa-dlc-rule-details/` is directly under `.kiro/` (not at project root) |
+| **Kiro CLI**: rules not visible | Run `kiro-cli` → `/context show` and confirm `.kiro/steering/qa-dlc-core` entries |
 
 ---
 

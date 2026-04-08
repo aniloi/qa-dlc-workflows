@@ -49,10 +49,60 @@ qa-dlc-rules/
 
 ## Platform-Specific Setup
 
-> **All agents**: After completing agent-specific setup, also copy the rule details directory:
+- [Kiro](#kiro-kirosteering)
+- [Claude Code](#claude-code-claudemd)
+- [GitHub Copilot](#github-copilot-githubcopilot-instructionsmd)
+- [AGENTS.md](#agentsmd-generic--cursor--cline-fallback)
+- [Cursor](#cursor-cursorrulesvqa-dlc-workflowmdc)
+- [Cline](#cline-clinerulescoreworkflowmd)
+
+> **All agents except Kiro**: After completing agent-specific setup, also copy the rule details directory:
 > ```bash
 > cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
 > ```
+> Kiro uses a different placement — see the Kiro section below.
+
+---
+
+### Kiro (`.kiro/steering/`)
+
+QA-DLC uses [Kiro Steering Files](https://kiro.dev/docs/steering/) to load the workflow. The core workflow goes in `.kiro/steering/` and the rule details go directly under `.kiro/` (not `.qa-dlc-rule-details/`).
+
+**macOS/Linux:**
+```bash
+mkdir -p .kiro/steering
+cp -R qa-dlc-rules/qa-dlc-core .kiro/steering/
+cp -R qa-dlc-rules/qa-dlc-rule-details .kiro/
+```
+
+**Windows (PowerShell):**
+```powershell
+New-Item -ItemType Directory -Force -Path ".kiro\steering"
+Copy-Item -Recurse "qa-dlc-rules\qa-dlc-core" ".kiro\steering\"
+Copy-Item -Recurse "qa-dlc-rules\qa-dlc-rule-details" ".kiro\"
+```
+
+**Windows (CMD):**
+```cmd
+mkdir .kiro\steering
+xcopy qa-dlc-rules\qa-dlc-core .kiro\steering\qa-dlc-core\ /E /I
+xcopy qa-dlc-rules\qa-dlc-rule-details .kiro\qa-dlc-rule-details\ /E /I
+```
+
+Your project should look like:
+```
+<your-project-root>/
+└── .kiro/
+    ├── steering/
+    │   └── qa-dlc-core/
+    │       └── core-workflow.md
+    └── qa-dlc-rule-details/
+        ├── common/
+        ├── discovery/
+        └── execution/
+```
+
+> **Note**: Kiro reads steering files automatically. Open the Steering Files panel in Kiro IDE and confirm you see `core-workflow` listed under Workspace. Use Kiro in **Vibe mode** — if Kiro nudges you to switch to spec mode, select `No`.
 
 ---
 
@@ -204,7 +254,7 @@ The assistant will automatically:
 - **Declarative Gherkin** — enforces behavior-level descriptions, not UI click-through procedures
 - **Complete audit trail** — every user input and AI action logged in `aidlc-docs/audit.md` with timestamps
 - **Session continuity** — resumes from `aidlc-docs/qa-state.md` if a session is interrupted
-- **Multi-agent** — works with Claude Code, GitHub Copilot, Cursor, Cline, and any AGENTS.md-compatible assistant
+- **Multi-agent** — works with Kiro, Claude Code, GitHub Copilot, Cursor, Cline, and any AGENTS.md-compatible assistant
 
 ---
 
@@ -221,7 +271,7 @@ The assistant will automatically:
 
 ## Prerequisites
 
-- An AI coding assistant (Claude Code, GitHub Copilot, Cursor, Cline, or compatible)
+- An AI coding assistant (Kiro, Claude Code, GitHub Copilot, Cursor, Cline, or compatible)
 - A BDD automation framework with:
   - Cucumber step definition Java classes (or equivalent)
   - At least one existing `.feature` file to use as a style reference
@@ -233,9 +283,10 @@ The assistant will automatically:
 
 After installation, your project root should contain:
 
+**Claude Code / Copilot / AGENTS.md / Cursor / Cline:**
 ```
 <your-project-root>/
-├── CLAUDE.md  (or .github/copilot-instructions.md, AGENTS.md, etc.)
+├── CLAUDE.md  (or .github/copilot-instructions.md, AGENTS.md, .cursor/rules/*, .clinerules/*)
 ├── .qa-dlc-rule-details/
 │   ├── common/
 │   ├── discovery/
@@ -247,6 +298,26 @@ After installation, your project root should contain:
     └── src/test/
         ├── .../steps/           ← your existing step definitions (READ ONLY)
         └── .../features/        ← new .feature files will be written here
+```
+
+**Kiro:**
+```
+<your-project-root>/
+├── .kiro/
+│   ├── steering/
+│   │   └── qa-dlc-core/
+│   │       └── core-workflow.md
+│   └── qa-dlc-rule-details/
+│       ├── common/
+│       ├── discovery/
+│       └── execution/
+├── aidlc-docs/
+│   └── inception/
+│       └── user-stories/
+└── <framework-root>/
+    └── src/test/
+        ├── .../steps/
+        └── .../features/
 ```
 
 ---
