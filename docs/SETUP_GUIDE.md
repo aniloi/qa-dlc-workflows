@@ -41,7 +41,7 @@ cd qa-dlc-workflows-v1.0.0
 This step is **required for all agents**:
 
 ```bash
-cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
+cp -r qa-dlc-rules/qa-dlc-rule-details/ .qa-dlc-rule-details/
 ```
 
 Verify the result:
@@ -76,23 +76,23 @@ Kiro uses [Steering Files](https://kiro.dev/docs/steering/). The core workflow g
 
 **macOS/Linux:**
 ```bash
-mkdir -p <your-project-root>/.kiro/steering
-cp -R qa-dlc-rules/qa-dlc-core <your-project-root>/.kiro/steering/
-cp -R qa-dlc-rules/qa-dlc-rule-details <your-project-root>/.kiro/
+mkdir -p .kiro/steering
+cp -R qa-dlc-rules/qa-dlc-core .kiro/steering/
+cp -R qa-dlc-rules/qa-dlc-rule-details .kiro/
 ```
 
 **Windows (PowerShell):**
 ```powershell
-New-Item -ItemType Directory -Force -Path "<your-project-root>\.kiro\steering"
-Copy-Item -Recurse "qa-dlc-rules\qa-dlc-core" "<your-project-root>\.kiro\steering\"
-Copy-Item -Recurse "qa-dlc-rules\qa-dlc-rule-details" "<your-project-root>\.kiro\"
+New-Item -ItemType Directory -Force -Path ".kiro\steering"
+Copy-Item -Recurse "qa-dlc-rules\qa-dlc-core" ".kiro\steering\"
+Copy-Item -Recurse "qa-dlc-rules\qa-dlc-rule-details" ".kiro\"
 ```
 
 **Windows (CMD):**
 ```cmd
-mkdir <your-project-root>\.kiro\steering
-xcopy qa-dlc-rules\qa-dlc-core <your-project-root>\.kiro\steering\qa-dlc-core\ /E /I
-xcopy qa-dlc-rules\qa-dlc-rule-details <your-project-root>\.kiro\qa-dlc-rule-details\ /E /I
+mkdir .kiro\steering
+xcopy qa-dlc-rules\qa-dlc-core .kiro\steering\qa-dlc-core\ /E /I
+xcopy qa-dlc-rules\qa-dlc-rule-details .kiro\qa-dlc-rule-details\ /E /I
 ```
 
 Verify the layout:
@@ -117,7 +117,7 @@ Verify the layout:
 ### Claude Code
 
 ```bash
-cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-CLAUDE.md
+cp qa-dlc-rules/qa-dlc-core/core-workflow.md QA-CLAUDE.md
 ```
 
 > This keeps QA-DLC separate from any existing `CLAUDE.md` (e.g., from aidlc-workflows).
@@ -125,8 +125,8 @@ cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-CLAUDE.md
 ### GitHub Copilot
 
 ```bash
-mkdir -p <your-project-root>/.github
-cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.github/qa-copilot-instructions.md
+mkdir -p .github
+cp qa-dlc-rules/qa-dlc-core/core-workflow.md .github/qa-copilot-instructions.md
 ```
 
 > This keeps QA-DLC separate from any existing `.github/copilot-instructions.md`.
@@ -134,7 +134,7 @@ cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.github/qa-copi
 ### AGENTS.md (Generic)
 
 ```bash
-cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-AGENTS.md
+cp qa-dlc-rules/qa-dlc-core/core-workflow.md QA-AGENTS.md
 ```
 
 > This keeps QA-DLC separate from any existing `AGENTS.md`.
@@ -142,10 +142,10 @@ cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-AGENTS.md
 ### Cursor
 
 ```bash
-mkdir -p <your-project-root>/.cursor/rules
+mkdir -p .cursor/rules
 ```
 
-Create `<your-project-root>/.cursor/rules/qa-dlc-workflow.mdc`:
+Create `.cursor/rules/qa-dlc-workflow.mdc`:
 
 ```markdown
 ---
@@ -162,14 +162,14 @@ alwaysApply: false
 Then append the core workflow:
 
 ```bash
-cat qa-dlc-rules/qa-dlc-core/core-workflow.md >> <your-project-root>/.cursor/rules/qa-dlc-workflow.mdc
+cat qa-dlc-rules/qa-dlc-core/core-workflow.md >> .cursor/rules/qa-dlc-workflow.mdc
 ```
 
 ### Cline
 
 ```bash
-mkdir -p <your-project-root>/.clinerules
-cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.clinerules/qa-dlc-workflow.md
+mkdir -p .clinerules
+cp qa-dlc-rules/qa-dlc-core/core-workflow.md .clinerules/qa-dlc-workflow.md
 ```
 
 > This keeps QA-DLC separate from any existing `.clinerules/core-workflow.md`.

@@ -58,7 +58,7 @@ qa-dlc-rules/
 
 > **All agents except Kiro**: After completing agent-specific setup, also copy the rule details directory:
 > ```bash
-> cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
+> cp -r qa-dlc-rules/qa-dlc-rule-details/ .qa-dlc-rule-details/
 > ```
 > Kiro uses a different placement — see the Kiro section below.
 
@@ -110,12 +110,12 @@ Your project should look like:
 
 1. Copy `qa-dlc-rules/qa-dlc-core/core-workflow.md` to your project root as `QA-CLAUDE.md`:
    ```bash
-   cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-CLAUDE.md
+   cp qa-dlc-rules/qa-dlc-core/core-workflow.md QA-CLAUDE.md
    ```
    > This keeps QA-DLC separate from any existing `CLAUDE.md` (e.g., from aidlc-workflows).
 2. Copy the rule details:
    ```bash
-   cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
+   cp -r qa-dlc-rules/qa-dlc-rule-details/ .qa-dlc-rule-details/
    ```
 3. Start Claude Code in your project root. Trigger the workflow with:
    ```
@@ -128,16 +128,16 @@ Your project should look like:
 
 1. Create the directory if it doesn't exist:
    ```bash
-   mkdir -p <your-project-root>/.github
+   mkdir -p .github
    ```
 2. Copy `qa-dlc-rules/qa-dlc-core/core-workflow.md` as `qa-copilot-instructions.md`:
    ```bash
-   cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.github/qa-copilot-instructions.md
+   cp qa-dlc-rules/qa-dlc-core/core-workflow.md .github/qa-copilot-instructions.md
    ```
    > This keeps QA-DLC separate from any existing `.github/copilot-instructions.md` (e.g., from aidlc-workflows).
 3. Copy the rule details:
    ```bash
-   cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
+   cp -r qa-dlc-rules/qa-dlc-rule-details/ .qa-dlc-rule-details/
    ```
 4. In GitHub Copilot Chat, trigger with:
    ```
@@ -150,12 +150,12 @@ Your project should look like:
 
 1. Copy `qa-dlc-rules/qa-dlc-core/core-workflow.md` to your project root as `QA-AGENTS.md`:
    ```bash
-   cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-AGENTS.md
+   cp qa-dlc-rules/qa-dlc-core/core-workflow.md QA-AGENTS.md
    ```
    > This keeps QA-DLC separate from any existing `AGENTS.md` (e.g., from aidlc-workflows).
 2. Copy the rule details:
    ```bash
-   cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
+   cp -r qa-dlc-rules/qa-dlc-rule-details/ .qa-dlc-rule-details/
    ```
 3. Trigger with:
    ```
@@ -168,9 +168,9 @@ Your project should look like:
 
 1. Create the directory if it doesn't exist:
    ```bash
-   mkdir -p <your-project-root>/.cursor/rules
+   mkdir -p .cursor/rules
    ```
-2. Create `<your-project-root>/.cursor/rules/qa-dlc-workflow.mdc` with the following frontmatter, then append the contents of `qa-dlc-rules/qa-dlc-core/core-workflow.md`:
+2. Create `.cursor/rules/qa-dlc-workflow.mdc` with the following frontmatter, then append the contents of `qa-dlc-rules/qa-dlc-core/core-workflow.md`:
 
    ```markdown
    ---
@@ -187,7 +187,7 @@ Your project should look like:
 
 3. Copy the rule details:
    ```bash
-   cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
+   cp -r qa-dlc-rules/qa-dlc-rule-details/ .qa-dlc-rule-details/
    ```
 
 ---
@@ -196,16 +196,16 @@ Your project should look like:
 
 1. Create the directory if it doesn't exist:
    ```bash
-   mkdir -p <your-project-root>/.clinerules
+   mkdir -p .clinerules
    ```
 2. Copy `qa-dlc-rules/qa-dlc-core/core-workflow.md` as `qa-dlc-workflow.md`:
    ```bash
-   cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.clinerules/qa-dlc-workflow.md
+   cp qa-dlc-rules/qa-dlc-core/core-workflow.md .clinerules/qa-dlc-workflow.md
    ```
    > This keeps QA-DLC separate from any existing `.clinerules/core-workflow.md` (e.g., from aidlc-workflows).
 3. Copy the rule details:
    ```bash
-   cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
+   cp -r qa-dlc-rules/qa-dlc-rule-details/ .qa-dlc-rule-details/
    ```
 
 ---
