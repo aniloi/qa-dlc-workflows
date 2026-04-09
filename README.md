@@ -50,11 +50,11 @@ qa-dlc-rules/
 ## Platform-Specific Setup
 
 - [Kiro](#kiro-kirosteering)
-- [Claude Code](#claude-code-claudemd)
-- [GitHub Copilot](#github-copilot-githubcopilot-instructionsmd)
-- [AGENTS.md](#agentsmd-generic--cursor--cline-fallback)
-- [Cursor](#cursor-cursorrulesvqa-dlc-workflowmdc)
-- [Cline](#cline-clinerulescoreworkflowmd)
+- [Claude Code](#claude-code-qa-claudemd)
+- [GitHub Copilot](#github-copilot-githubqa-copilot-instructionsmd)
+- [AGENTS.md](#agentsmd-qa-agentsmd-generic--cursor--cline-fallback)
+- [Cursor](#cursor-cursorrulesca-dlc-workflowmdc)
+- [Cline](#cline-clinerulesca-dlc-workflowmd)
 
 > **All agents except Kiro**: After completing agent-specific setup, also copy the rule details directory:
 > ```bash
@@ -106,9 +106,13 @@ Your project should look like:
 
 ---
 
-### Claude Code (`CLAUDE.md`)
+### Claude Code (`QA-CLAUDE.md`)
 
-1. Copy or append the contents of `qa-dlc-rules/qa-dlc-core/core-workflow.md` into your project's `CLAUDE.md` at the project root.
+1. Copy `qa-dlc-rules/qa-dlc-core/core-workflow.md` to your project root as `QA-CLAUDE.md`:
+   ```bash
+   cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-CLAUDE.md
+   ```
+   > This keeps QA-DLC separate from any existing `CLAUDE.md` (e.g., from aidlc-workflows).
 2. Copy the rule details:
    ```bash
    cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
@@ -120,16 +124,17 @@ Your project should look like:
 
 ---
 
-### GitHub Copilot (`.github/copilot-instructions.md`)
+### GitHub Copilot (`.github/qa-copilot-instructions.md`)
 
 1. Create the directory if it doesn't exist:
    ```bash
    mkdir -p <your-project-root>/.github
    ```
-2. Copy or append the contents of `qa-dlc-rules/qa-dlc-core/core-workflow.md` into:
+2. Copy `qa-dlc-rules/qa-dlc-core/core-workflow.md` as `qa-copilot-instructions.md`:
+   ```bash
+   cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.github/qa-copilot-instructions.md
    ```
-   <your-project-root>/.github/copilot-instructions.md
-   ```
+   > This keeps QA-DLC separate from any existing `.github/copilot-instructions.md` (e.g., from aidlc-workflows).
 3. Copy the rule details:
    ```bash
    cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
@@ -141,9 +146,13 @@ Your project should look like:
 
 ---
 
-### AGENTS.md (Generic / Cursor / Cline fallback)
+### AGENTS.md (`QA-AGENTS.md` Generic / Cursor / Cline fallback)
 
-1. Copy or append the contents of `qa-dlc-rules/qa-dlc-core/core-workflow.md` into `AGENTS.md` at your project root.
+1. Copy `qa-dlc-rules/qa-dlc-core/core-workflow.md` to your project root as `QA-AGENTS.md`:
+   ```bash
+   cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-AGENTS.md
+   ```
+   > This keeps QA-DLC separate from any existing `AGENTS.md` (e.g., from aidlc-workflows).
 2. Copy the rule details:
    ```bash
    cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
@@ -183,16 +192,17 @@ Your project should look like:
 
 ---
 
-### Cline (`.clinerules/core-workflow.md`)
+### Cline (`.clinerules/qa-dlc-workflow.md`)
 
 1. Create the directory if it doesn't exist:
    ```bash
    mkdir -p <your-project-root>/.clinerules
    ```
-2. Copy the core workflow file:
+2. Copy `qa-dlc-rules/qa-dlc-core/core-workflow.md` as `qa-dlc-workflow.md`:
    ```bash
-   cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.clinerules/core-workflow.md
+   cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.clinerules/qa-dlc-workflow.md
    ```
+   > This keeps QA-DLC separate from any existing `.clinerules/core-workflow.md` (e.g., from aidlc-workflows).
 3. Copy the rule details:
    ```bash
    cp -r qa-dlc-rules/qa-dlc-rule-details/ <your-project-root>/.qa-dlc-rule-details/
@@ -299,7 +309,14 @@ After installation, your project root should contain:
 **Claude Code / Copilot / AGENTS.md / Cursor / Cline:**
 ```
 <your-project-root>/
-├── CLAUDE.md  (or .github/copilot-instructions.md, AGENTS.md, .cursor/rules/*, .clinerules/*)
+├── QA-CLAUDE.md              (Claude Code)
+├── QA-AGENTS.md              (AGENTS.md / generic fallback)
+├── .github/
+│   └── qa-copilot-instructions.md   (GitHub Copilot)
+├── .cursor/rules/
+│   └── qa-dlc-workflow.mdc  (Cursor)
+├── .clinerules/
+│   └── qa-dlc-workflow.md   (Cline)
 ├── .qa-dlc-rule-details/
 │   ├── common/
 │   ├── discovery/

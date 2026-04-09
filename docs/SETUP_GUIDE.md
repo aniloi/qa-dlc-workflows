@@ -117,27 +117,27 @@ Verify the layout:
 ### Claude Code
 
 ```bash
-cat qa-dlc-rules/qa-dlc-core/core-workflow.md >> <your-project-root>/CLAUDE.md
+cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-CLAUDE.md
 ```
 
-Or if you don't have a `CLAUDE.md` yet:
-
-```bash
-cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/CLAUDE.md
-```
+> This keeps QA-DLC separate from any existing `CLAUDE.md` (e.g., from aidlc-workflows).
 
 ### GitHub Copilot
 
 ```bash
 mkdir -p <your-project-root>/.github
-cat qa-dlc-rules/qa-dlc-core/core-workflow.md >> <your-project-root>/.github/copilot-instructions.md
+cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.github/qa-copilot-instructions.md
 ```
+
+> This keeps QA-DLC separate from any existing `.github/copilot-instructions.md`.
 
 ### AGENTS.md (Generic)
 
 ```bash
-cat qa-dlc-rules/qa-dlc-core/core-workflow.md >> <your-project-root>/AGENTS.md
+cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/QA-AGENTS.md
 ```
+
+> This keeps QA-DLC separate from any existing `AGENTS.md`.
 
 ### Cursor
 
@@ -169,8 +169,10 @@ cat qa-dlc-rules/qa-dlc-core/core-workflow.md >> <your-project-root>/.cursor/rul
 
 ```bash
 mkdir -p <your-project-root>/.clinerules
-cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.clinerules/core-workflow.md
+cp qa-dlc-rules/qa-dlc-core/core-workflow.md <your-project-root>/.clinerules/qa-dlc-workflow.md
 ```
+
+> This keeps QA-DLC separate from any existing `.clinerules/core-workflow.md`.
 
 ---
 
