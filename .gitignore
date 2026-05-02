@@ -5,11 +5,15 @@
 # aidlc-docs/qa-state.md
 # aidlc-docs/audit.md
 
+# AI-DLC rules (downloaded, not source-controlled)
+.aidlc/
+
 # OS artifacts
 .DS_Store
 Thumbs.db
 
 # Editor artifacts
+.kiro/
 .idea/
 .vscode/
 *.swp

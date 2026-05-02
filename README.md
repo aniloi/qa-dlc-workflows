@@ -387,6 +387,56 @@ aidlc-docs/audit.md
 
 ---
 
+## Experimental: AI-Assisted Setup (Release Download)
+
+Instead of manually copying files, let your AI agent handle the setup. This is an experimental workflow — currently validated with Kiro, Claude Code, and Cursor.
+
+> **Note:** This approach requires your agent to have shell access (e.g., Kiro, Claude Code, Cline). For agents without shell access, follow the [Quick Start](#quick-start) and [Platform-Specific Setup](#platform-specific-setup) above.
+
+Paste this prompt into your AI agent:
+
+````text
+Set up QA-DLC in this project by doing the following:
+
+1. Download the latest QA-DLC release:
+   - Use the GitHub API to find the latest release asset URL:
+     curl -sL https://api.github.com/repos/aniloi/qa-dlc-workflows/releases/latest \
+       | grep -o '"browser_download_url": *"[^"]*"' \
+       | head -1 \
+       | cut -d'"' -f4
+   - Download the zip from that URL to /tmp/qa-dlc-rules.zip
+   - Extract it: unzip -o /tmp/qa-dlc-rules.zip -d /tmp/qa-dlc-release
+   - Copy the qa-dlc-rules/ folder from the extracted contents into .qa-dlc at the project root
+   - Clean up: rm -rf /tmp/qa-dlc-rules.zip /tmp/qa-dlc-release
+
+2. Create the appropriate rules/steering file for your IDE using the options below.
+   Pick the one that matches the agent you are running in:
+
+   - Kiro IDE or Kiro CLI     → create `.kiro/steering/qa-dlc.md`
+   - Amazon Q Developer       → create `.amazonq/rules/qa-dlc.md`
+   - Antigravity              → create `.agent/rules/qa-dlc.md`
+   - Cursor                   → create `.cursor/rules/qa-dlc.mdc` with frontmatter:
+     ---
+     description: "QA-DLC Gherkin workflow"
+     alwaysApply: true
+     ---
+   - Cline                    → create `.clinerules/qa-dlc.md`
+   - Claude Code              → create `QA-CLAUDE.md`
+   - GitHub Copilot           → create `.github/qa-copilot-instructions.md`
+   - Any other agent          → create `QA-AGENTS.md`
+
+3. The file content should be:
+
+   When the user invokes QA-DLC, read and follow
+   `.qa-dlc/qa-dlc-rules/qa-dlc-core/core-workflow.md` to start the workflow.
+
+4. Add `.qa-dlc` to `.gitignore` unless I explicitly ask you not to.
+
+5. Confirm what file you created and that `.qa-dlc` is gitignored.
+````
+
+---
+
 ## Attribution
 
 QA-DLC Workflows is inspired by and modeled on the architecture of [**awslabs/aidlc-workflows**](https://github.com/awslabs/aidlc-workflows) — the AI-Driven Development Lifecycle framework from AWS Labs. The two-phase workflow structure, rule detail file organization, and agent-instruction pattern are all derived from that project.
