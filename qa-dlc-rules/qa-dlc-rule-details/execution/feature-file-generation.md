@@ -60,6 +60,11 @@ Every feature file must comply with the following. These rules are non-negotiabl
 - Feature file name: `camelCase.feature` (e.g., `depositSmoke.feature`)
 - Scenario names: concise, unique, and specific to the behavior being tested — not the user story title
 - Scenario Outline column names: `camelCase` (e.g., `<amount>`, `<currency>`)
+- **Scenario Outline names MUST include the `Examples` column placeholders** so each generated test row is self-describing:
+  - ✅ Good: `<accountManagementType> account BULK_FUNDING deposit produces a RECEIPT_BULK_FUNDING fintran`
+  - ❌ Bad: `Managed account BULK_FUNDING deposit produces a RECEIPT_BULK_FUNDING fintran`
+  - Include every column whose value meaningfully distinguishes one row from another
+  - Use the exact `<columnName>` placeholder syntax — Cucumber replaces these with row values in test output
 
 #### Abstraction Level
 - All steps must be declarative — describe **what** the system does, not **how** to interact with it

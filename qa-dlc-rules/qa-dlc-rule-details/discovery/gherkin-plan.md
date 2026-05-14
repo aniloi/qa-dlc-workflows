@@ -33,7 +33,7 @@ Using the output of Story Analysis (acceptance criteria) and Step Inventory (ava
 |---|---|
 | User Story | Story ID or filename |
 | Acceptance Criterion | One criterion per row (explicit or implied) |
-| Proposed Scenario(s) | Scenario name(s) — concise, unique, declarative |
+| Proposed Scenario(s) | Scenario name(s) — concise, unique, declarative. For `Scenario Outline`, the name MUST include `<columnName>` placeholders for every column whose value distinguishes rows (e.g., `<accountManagementType> account BULK_FUNDING deposit produces a RECEIPT_BULK_FUNDING fintran`) |
 | Reusable Steps | Exact step patterns from Step Inventory that will be used |
 | New Steps Needed | Step wording for any step not in the inventory |
 | Target Feature File | `camelCase.feature` filename where this scenario will live |
