@@ -50,7 +50,7 @@ needs a decision. Re-run affected sensors after any edit.
 
 ### Step 3 — Final summary + advance
 Present the final completion summary, then
-`bun .claude/tools/qa-dlc-orchestrate.ts report --stage cross-feature-check`.
+`bun .claude/tools/qadlc-orchestrate.ts report --stage cross-feature-check`.
 The engine emits `done`.
 
 ## Sensors
@@ -61,7 +61,7 @@ from AI-remembered prose into a repeatable check across the written suite.
 
 ## Learn
 
-Diary at `aidlc-docs/.qa-dlc-memory/cross-feature-check/memory.md`. A class of
+Diary at `aidlc-docs/.qadlc-memory/cross-feature-check/memory.md`. A class of
 consistency problem you keep catching by hand is a candidate for a new sensor
 (author a manifest under `.claude/sensors/` and add its id to this
 stage's `sensors:` list per `stage-protocol.md` §Learn).

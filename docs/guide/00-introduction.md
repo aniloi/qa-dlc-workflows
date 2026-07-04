@@ -1,17 +1,17 @@
-# QA-DLC v2 — User Guide
+# QADLC v2 — User Guide
 
 > **User Guide** · [Harness Engineer Guide](../harness-engineering/00-overview.md) · [Developer Reference](../reference/00-overview.md)
 
-This guide is for anyone **using** QA-DLC to author Gherkin feature files.
+This guide is for anyone **using** QADLC to author Gherkin feature files.
 
 ## What it does
 
-You invoke QA-DLC with a story source and a scope; it runs a two-phase workflow —
+You invoke QADLC with a story source and a scope; it runs a two-phase workflow —
 Discovery then Execution — and never writes a `.feature` file before you approve
 the plan.
 
 ```
-Using QA-DLC, write feature files for CLM-123
+Using QADLC, write feature files for CLM-123
 ```
 
 ## The two phases and seven stages
@@ -45,7 +45,7 @@ scope's default depth at the plan gate.
 
 ## The plan gate
 
-QA-DLC will not write a single `.feature` line until you approve `gherkin_plan.md`.
+QADLC will not write a single `.feature` line until you approve `gherkin_plan.md`.
 This is enforced by the engine and the stop hook — not left to the model's memory.
 
 ## Sensors (automatic quality checks)
@@ -53,7 +53,7 @@ This is enforced by the engine and the stop hook — not left to the model's mem
 On every `.feature` write, deterministic sensors fire: structural `gherkin-lint`,
 `tag-policy`, `step-existence` (against your step catalog), and
 `duplicate-scenario-name`. They are advisory — findings surface at the next gate
-in `aidlc-docs/.qa-dlc-sensors/`, they never silently block you.
+in `aidlc-docs/.qadlc-sensors/`, they never silently block you.
 
 ## State, audit, resume
 
@@ -64,5 +64,5 @@ in `aidlc-docs/.qa-dlc-sensors/`, they never silently block you.
 
 ## Runner commands
 
-- `qa-dlc-session-cost` — a compact status report of the current session
-- `qa-dlc-replay` — reconstruct the session timeline from the audit trail
+- `qadlc-session-cost` — a compact status report of the current session
+- `qadlc-replay` — reconstruct the session timeline from the audit trail

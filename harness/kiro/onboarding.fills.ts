@@ -4,7 +4,7 @@
 import type { OnboardingFills } from "../../scripts/onboarding.ts";
 
 const fills: OnboardingFills = {
-  invoke: "Using QA-DLC",
+  invoke: "Using QADLC",
   slots: {
     install: [
       "## Installation (Kiro)",
@@ -16,7 +16,7 @@ const fills: OnboardingFills = {
       "cp dist/kiro/QA-AGENTS.md your-project/QA-AGENTS.md",
       "```",
       "",
-      "Kiro auto-loads `.kiro/steering/`. Confirm `qa-dlc` appears in the Steering",
+      "Kiro auto-loads `.kiro/steering/`. Confirm `qadlc` appears in the Steering",
       "Files panel. Use Kiro in Vibe mode.",
     ].join("\n"),
     mcp: [

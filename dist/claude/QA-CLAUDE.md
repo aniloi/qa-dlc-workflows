@@ -1,9 +1,9 @@
-# QA-DLC — Gherkin Feature File Development Workflow
+# QADLC — Gherkin Feature File Development Workflow
 
 > This file is generated from `core/templates/onboarding.md`. Do not hand-edit a
 > distributed copy — edit the skeleton and run `bun scripts/package.ts`.
 
-QA-DLC (Quality Assurance Development Lifecycle) is a plan-first, two-phase
+QADLC (Quality Assurance Development Lifecycle) is a plan-first, two-phase
 workflow that turns user stories into production-ready `.feature` files. The AI
 never writes a single line of Gherkin until a plan is explicitly approved.
 
@@ -12,12 +12,12 @@ never writes a single line of Gherkin until a plan is explicitly approved.
 Invoke the workflow with:
 
 ```
-Using QA-DLC, write feature files for <Jira key or story path>
+Using QADLC, write feature files for <Jira key or story path>
 ```
 
 When invoked, read and follow the conductor at
 `.claude/qa-common/conductor.md`, which drives the deterministic engine
-(`.claude/tools/qa-dlc-orchestrate.ts`). The engine decides which stage
+(`.claude/tools/qadlc-orchestrate.ts`). The engine decides which stage
 runs next based on the detected scope; the conductor executes each stage well.
 
 ## Installation (Claude Code)
@@ -30,7 +30,7 @@ cp dist/claude/QA-CLAUDE.md your-project/QA-CLAUDE.md
 ```
 
 `QA-CLAUDE.md` is kept separate from any existing `CLAUDE.md`. The
-`.claude/rules/qa-dlc.md` stub pulls the conductor into ambient context.
+`.claude/rules/qadlc.md` stub pulls the conductor into ambient context.
 
 ## What it does
 

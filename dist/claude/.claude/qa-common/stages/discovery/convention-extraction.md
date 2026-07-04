@@ -51,7 +51,7 @@ reconcile the extracted style with the standing team rules; the team rule wins o
 conflict and the divergence is noted as an Open Question.
 
 ### Step 4 — Advance
-`bun .claude/tools/qa-dlc-orchestrate.ts report --stage convention-extraction`.
+`bun .claude/tools/qadlc-orchestrate.ts report --stage convention-extraction`.
 
 ## Sensors
 
@@ -59,7 +59,7 @@ None bound. Convention Extraction produces notes.
 
 ## Learn
 
-Diary at `aidlc-docs/.qa-dlc-memory/convention-extraction/memory.md`. A stable,
+Diary at `aidlc-docs/.qadlc-memory/convention-extraction/memory.md`. A stable,
 repeated convention (e.g. "every API scenario is tagged `@api`") is a strong
 candidate to promote into team memory so future runs load it instead of
 re-deriving it.

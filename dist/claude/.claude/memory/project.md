@@ -1,4 +1,4 @@
-# Project Memory — QA-DLC
+# Project Memory — QADLC
 
 > Project-specific overrides and facts. More specific than `team.md`; a
 > project rule wins over a team rule on conflict. Hand-editable; the learning

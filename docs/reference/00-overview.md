@@ -1,8 +1,8 @@
-# QA-DLC v2 — Developer Reference
+# QADLC v2 — Developer Reference
 
 > [User Guide](../guide/00-introduction.md) · [Harness Engineer Guide](../harness-engineering/00-overview.md) · **Developer Reference**
 
-For contributors changing QA-DLC's **code** — the engine, the compiler, hooks,
+For contributors changing QADLC's **code** — the engine, the compiler, hooks,
 tools, the packager, the test suite.
 
 ## Path conventions
@@ -28,15 +28,15 @@ from `harness/*/manifest.ts`.
 
 | Tool | Role |
 |---|---|
-| `qa-dlc-lib.ts` | zero-dep frontmatter parsing, path/harness resolution, hook-input helpers |
-| `qa-dlc-stage-schema.ts` / `-scope-schema.ts` / `-sensor-schema.ts` | parse + validate the three declarative file types |
-| `qa-dlc-graph.ts` | `compileGraph(root)` → `stage-graph.json` + `scope-grid.json`; cross-checks; `compile [--check]` CLI |
-| `qa-dlc-state.ts` | tool-owned `qa-state.md` (human render + canonical `<!-- qa-state:machine -->` JSON) |
-| `qa-dlc-audit.ts` | append-only `audit.md`; `appendAuditEntry()` |
-| `qa-dlc-orchestrate.ts` | the **engine**: `next` (emit directive) / `report` (record outcome) |
-| `qa-dlc-gherkin.ts` | dep-free `.feature` parser shared by sensors |
-| `qa-dlc-sensor-*.ts` | per-sensor scripts (`--stage`/`--file-path` → JSON) |
-| `qa-dlc-sensor.ts` | dispatcher: resolve a stage's sensors, filter by `matches`, run, write detail, audit |
+| `qadlc-lib.ts` | zero-dep frontmatter parsing, path/harness resolution, hook-input helpers |
+| `qadlc-stage-schema.ts` / `-scope-schema.ts` / `-sensor-schema.ts` | parse + validate the three declarative file types |
+| `qadlc-graph.ts` | `compileGraph(root)` → `stage-graph.json` + `scope-grid.json`; cross-checks; `compile [--check]` CLI |
+| `qadlc-state.ts` | tool-owned `qa-state.md` (human render + canonical `<!-- qa-state:machine -->` JSON) |
+| `qadlc-audit.ts` | append-only `audit.md`; `appendAuditEntry()` |
+| `qadlc-orchestrate.ts` | the **engine**: `next` (emit directive) / `report` (record outcome) |
+| `qadlc-gherkin.ts` | dep-free `.feature` parser shared by sensors |
+| `qadlc-sensor-*.ts` | per-sensor scripts (`--stage`/`--file-path` → JSON) |
+| `qadlc-sensor.ts` | dispatcher: resolve a stage's sensors, filter by `matches`, run, write detail, audit |
 
 ## The directive contract
 
@@ -63,16 +63,16 @@ Two enforcement points, both deterministic:
 1. **Engine** — `next` never emits an Execution-phase `run-stage` while
    `plan_approved !== "YES"`; it re-emits the `gherkin-plan` gate instead.
    `gherkin-plan` only completes with `--approved`.
-2. **Stop hook** (`qa-dlc-stop.ts`) — blocks the turn (`{"decision":"block"}`) if
+2. **Stop hook** (`qadlc-stop.ts`) — blocks the turn (`{"decision":"block"}`) if
    a `.feature` artifact appears in the audit with no preceding `PLAN_APPROVED`.
 
 ## Hooks (`core/hooks/`)
 
-PostToolUse `qa-dlc-audit-logger` (artifact events) + `qa-dlc-sensor-fire`
+PostToolUse `qadlc-audit-logger` (artifact events) + `qadlc-sensor-fire`
 (dispatch sensors on `.feature` writes); SessionStart/End; the Stop enforcer;
-`qa-dlc-validate-state` (integrity vs. the scope grid). Hook imports use
+`qadlc-validate-state` (integrity vs. the scope grid). Hook imports use
 `../tools/…` (hooks and tools are sibling dirs in every tree). Kiro reaches the
-core hooks through `harness/kiro/hooks/qa-dlc-kiro-adapter.ts`.
+core hooks through `harness/kiro/hooks/qadlc-kiro-adapter.ts`.
 
 ## Tests (`tests/`, `bun test`)
 
@@ -83,5 +83,5 @@ copy.
 
 ## Adding an audit event or directive field
 
-Update the emitter (`qa-dlc-audit.ts` / `qa-dlc-orchestrate.ts`), then extend the
+Update the emitter (`qadlc-audit.ts` / `qadlc-orchestrate.ts`), then extend the
 relevant test in `tests/` — the suite is the contract.

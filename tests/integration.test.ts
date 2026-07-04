@@ -22,7 +22,7 @@ function run(bin: string, args: string[], input?: string) {
 }
 
 beforeAll(() => {
-  proj = mkdtempSync(join(tmpdir(), "qa-dlc-it-"));
+  proj = mkdtempSync(join(tmpdir(), "qadlc-it-"));
   cpSync(DIST_KIRO, H(), { recursive: true });
   mkdirSync(join(proj, "features"), { recursive: true });
 });
@@ -30,13 +30,13 @@ afterAll(() => rmSync(proj, { recursive: true, force: true }));
 
 describe("engine next/report + plan gate", () => {
   test("detect-scope when no session", () => {
-    const { out } = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    const { out } = run(tool("qadlc-orchestrate.ts"), ["next"]);
     expect(out).toContain('"type": "detect-scope"');
   });
 
   test("init + first move carries persona and workspace-detection", () => {
-    run(tool("qa-dlc-orchestrate.ts"), ["report", "--scope", "smoke"]);
-    const { out } = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    run(tool("qadlc-orchestrate.ts"), ["report", "--scope", "smoke"]);
+    const { out } = run(tool("qadlc-orchestrate.ts"), ["next"]);
     expect(out).toContain('"type": "run-stage"');
     expect(out).toContain("workspace-detection");
     expect(out).toContain("conductor_persona");
@@ -44,26 +44,26 @@ describe("engine next/report + plan gate", () => {
 
   test("execution is gated until the plan is approved", () => {
     for (const s of ["workspace-detection", "story-analysis", "convention-extraction", "step-inventory"]) {
-      run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", s]);
+      run(tool("qadlc-orchestrate.ts"), ["report", "--stage", s]);
     }
     // completing the gate WITHOUT approval keeps it closed
-    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "gherkin-plan"]);
-    const gated = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    run(tool("qadlc-orchestrate.ts"), ["report", "--stage", "gherkin-plan"]);
+    const gated = run(tool("qadlc-orchestrate.ts"), ["next"]);
     expect(gated.out).toContain('"type": "gate"');
 
     // approve → advances into execution
-    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "gherkin-plan", "--approved", "--feature-count", "2"]);
-    const after = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    run(tool("qadlc-orchestrate.ts"), ["report", "--stage", "gherkin-plan", "--approved", "--feature-count", "2"]);
+    const after = run(tool("qadlc-orchestrate.ts"), ["next"]);
     expect(after.out).toContain("feature-generation");
     expect(after.out).toContain('"foreach": true');
   });
 
   test("foreach completes and workflow reaches done", () => {
-    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "feature-generation", "--file", "features/a.feature"]);
-    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "feature-generation", "--file", "features/b.feature"]);
-    run(tool("qa-dlc-orchestrate.ts"), ["next"]); // cross-feature-check
-    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "cross-feature-check"]);
-    const done = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    run(tool("qadlc-orchestrate.ts"), ["report", "--stage", "feature-generation", "--file", "features/a.feature"]);
+    run(tool("qadlc-orchestrate.ts"), ["report", "--stage", "feature-generation", "--file", "features/b.feature"]);
+    run(tool("qadlc-orchestrate.ts"), ["next"]); // cross-feature-check
+    run(tool("qadlc-orchestrate.ts"), ["report", "--stage", "cross-feature-check"]);
+    const done = run(tool("qadlc-orchestrate.ts"), ["next"]);
     expect(done.out).toContain('"type": "done"');
   });
 });
@@ -71,7 +71,7 @@ describe("engine next/report + plan gate", () => {
 describe("sensors", () => {
   test("gherkin-lint flags a leading-conjunction scenario", () => {
     writeFileSync(join(proj, "features", "bad.feature"), "Feature: B\n\n  Scenario: x\n    And nope\n    Then y\n");
-    const { out } = run(tool("qa-dlc-sensor-gherkin-lint.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
+    const { out } = run(tool("qadlc-sensor-gherkin-lint.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
     const res = JSON.parse(out);
     expect(res.pass).toBe(false);
     expect(res.findings.some((f: { rule: string }) => f.rule === "leading-conjunction")).toBe(true);
@@ -79,17 +79,17 @@ describe("sensors", () => {
 
   test("gherkin-lint flags a non-kebab-case filename", () => {
     writeFileSync(join(proj, "features", "loginSmoke.feature"), "@smoke\nFeature: L\n\n  @auth\n  Scenario: s\n    Given a\n    Then b\n");
-    const { out } = run(tool("qa-dlc-sensor-gherkin-lint.ts"), ["--stage", "feature-generation", "--file-path", "features/loginSmoke.feature"]);
+    const { out } = run(tool("qadlc-sensor-gherkin-lint.ts"), ["--stage", "feature-generation", "--file-path", "features/loginSmoke.feature"]);
     expect(JSON.parse(out).findings.some((f: { rule: string }) => f.rule === "naming-convention")).toBe(true);
   });
 
   test("tag-policy flags a scenario with no tags", () => {
-    const { out } = run(tool("qa-dlc-sensor-tag-policy.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
+    const { out } = run(tool("qadlc-sensor-tag-policy.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
     expect(JSON.parse(out).pass).toBe(false);
   });
 
   test("dispatcher runs bound sensors and reports statuses", () => {
-    const { out } = run(tool("qa-dlc-sensor.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
+    const { out } = run(tool("qadlc-sensor.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
     const res = JSON.parse(out);
     const ids = res.ran.map((r: { id: string }) => r.id);
     expect(ids).toContain("gherkin-lint");
@@ -98,25 +98,25 @@ describe("sensors", () => {
 
   test("plan-sections flags a plan missing the gap report, passes a complete one", () => {
     writeFileSync(join(proj, "gherkin_plan.md"), "# Plan\n\n## Story-to-Scenario Mapping\nx\n\n## Implementation Checklist\n- [ ] a-b.feature\n\n## Open Questions\nnone\n");
-    const bad = JSON.parse(run(tool("qa-dlc-sensor-plan-sections.ts"), ["--stage", "gherkin-plan", "--file-path", "gherkin_plan.md"]).out);
+    const bad = JSON.parse(run(tool("qadlc-sensor-plan-sections.ts"), ["--stage", "gherkin-plan", "--file-path", "gherkin_plan.md"]).out);
     expect(bad.findings.some((f: { rule: string }) => f.rule === "missing-plan-section")).toBe(true);
     writeFileSync(join(proj, "gherkin_plan.md"), "# Plan\n\n## Story-to-Scenario Mapping\nx\n\n## Stories Without Requirements or Insufficient Acceptance Criteria\nAll stories had sufficient requirements.\n\n## Implementation Checklist\n- [ ] a-b.feature\n\n## Open Questions\nnone\n");
-    const good = JSON.parse(run(tool("qa-dlc-sensor-plan-sections.ts"), ["--stage", "gherkin-plan", "--file-path", "gherkin_plan.md"]).out);
+    const good = JSON.parse(run(tool("qadlc-sensor-plan-sections.ts"), ["--stage", "gherkin-plan", "--file-path", "gherkin_plan.md"]).out);
     expect(good.pass).toBe(true);
   });
 });
 
 describe("stop-hook enforcement", () => {
   test("blocks when a feature precedes plan approval", () => {
-    const p2 = mkdtempSync(join(tmpdir(), "qa-dlc-stop-"));
+    const p2 = mkdtempSync(join(tmpdir(), "qadlc-stop-"));
     cpSync(DIST_KIRO, join(p2, ".kiro"), { recursive: true });
     mkdirSync(join(p2, "features"), { recursive: true });
-    const orch = join(p2, ".kiro", "tools", "qa-dlc-orchestrate.ts");
-    const stop = join(p2, ".kiro", "hooks", "qa-dlc-stop.ts");
+    const orch = join(p2, ".kiro", "tools", "qadlc-orchestrate.ts");
+    const stop = join(p2, ".kiro", "hooks", "qadlc-stop.ts");
     spawnSync("bun", [orch, "report", "--scope", "smoke"], { cwd: p2 });
     // log a feature artifact before approval via the audit-logger
     writeFileSync(join(p2, "features", "x.feature"), "Feature: X\n  @smoke\n  Scenario: y\n    Given a\n    Then b\n");
-    spawnSync("bun", [join(p2, ".kiro", "hooks", "qa-dlc-audit-logger.ts")], {
+    spawnSync("bun", [join(p2, ".kiro", "hooks", "qadlc-audit-logger.ts")], {
       cwd: p2,
       input: JSON.stringify({ tool_name: "Write", tool_input: { file_path: join(p2, "features", "x.feature") } }),
     });
@@ -128,14 +128,14 @@ describe("stop-hook enforcement", () => {
 
 describe("tag-policy Jira mode", () => {
   function scaffold(storySource: string): string {
-    const p = mkdtempSync(join(tmpdir(), "qa-dlc-jira-"));
+    const p = mkdtempSync(join(tmpdir(), "qadlc-jira-"));
     cpSync(DIST_KIRO, join(p, ".kiro"), { recursive: true });
     mkdirSync(join(p, "features"), { recursive: true });
-    spawnSync("bun", [join(p, ".kiro", "tools", "qa-dlc-orchestrate.ts"), "report", "--scope", "smoke", "--story-source", storySource], { cwd: p });
+    spawnSync("bun", [join(p, ".kiro", "tools", "qadlc-orchestrate.ts"), "report", "--scope", "smoke", "--story-source", storySource], { cwd: p });
     return p;
   }
   function tagPolicy(p: string, rel: string) {
-    const r = spawnSync("bun", [join(p, ".kiro", "tools", "qa-dlc-sensor-tag-policy.ts"), "--stage", "feature-generation", "--file-path", rel], { cwd: p, encoding: "utf-8" });
+    const r = spawnSync("bun", [join(p, ".kiro", "tools", "qadlc-sensor-tag-policy.ts"), "--stage", "feature-generation", "--file-path", rel], { cwd: p, encoding: "utf-8" });
     return JSON.parse(r.stdout ?? "{}");
   }
   const noJira = "@smoke\nFeature: X\n  @account\n  Scenario: y\n    Given a\n    Then b\n";

@@ -28,13 +28,13 @@ const manifest: HarnessManifest = {
     { src: "agents", dst: "agents" },
     { src: "hooks", dst: "hooks" },
     { src: "memory", dst: "memory" },
-    { src: "skills/qa-dlc-session-cost", dst: "skills/qa-dlc-session-cost" },
-    { src: "skills/qa-dlc-replay", dst: "skills/qa-dlc-replay" },
+    { src: "skills/qadlc-session-cost", dst: "skills/qadlc-session-cost" },
+    { src: "skills/qadlc-replay", dst: "skills/qadlc-replay" },
   ],
 
   harnessFiles: [
-    { src: "skills/qa-dlc/SKILL.md", dst: "skills/qa-dlc/SKILL.md" },
-    { src: "hooks/qa-dlc-kiro-adapter.ts", dst: "hooks/qa-dlc-kiro-adapter.ts" },
+    { src: "skills/qadlc/SKILL.md", dst: "skills/qadlc/SKILL.md" },
+    { src: "hooks/qadlc-kiro-adapter.ts", dst: "hooks/qadlc-kiro-adapter.ts" },
     { src: "dot-gitignore", dst: ".gitignore", projectRoot: true },
   ],
 
@@ -48,7 +48,7 @@ const manifest: HarnessManifest = {
   // The authored orchestrator skill lives inside skills/ alongside any core
   // session skills; exempt Kiro-native agent JSON + adapter hooks from the
   // orphan scan for when Phase 3/5 add them.
-  authoredExempt: [/^agents\/[^/]+\.json$/, /^hooks\/qa-dlc-kiro-[^/]+\.ts$/],
+  authoredExempt: [/^agents\/[^/]+\.json$/, /^hooks\/qadlc-kiro-[^/]+\.ts$/],
 
   emit: null,
 };

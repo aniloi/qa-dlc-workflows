@@ -79,7 +79,7 @@ data-driven cases the criteria imply.
 
 ### Step 6 — Advance
 Report completion:
-`bun {{HARNESS_DIR}}/tools/qa-dlc-orchestrate.ts report --stage story-analysis`.
+`bun {{HARNESS_DIR}}/tools/qadlc-orchestrate.ts report --stage story-analysis`.
 
 ## Sensors
 
@@ -87,6 +87,6 @@ None bound. Story Analysis produces notes, not `.feature` output.
 
 ## Learn
 
-Diary at `aidlc-docs/.qa-dlc-memory/story-analysis/memory.md`. Record
+Diary at `aidlc-docs/.qadlc-memory/story-analysis/memory.md`. Record
 interpretations of ambiguous criteria and any recurring story-shape conventions
 worth promoting to team memory.

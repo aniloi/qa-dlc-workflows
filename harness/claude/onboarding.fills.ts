@@ -4,7 +4,7 @@
 import type { OnboardingFills } from "../../scripts/onboarding.ts";
 
 const fills: OnboardingFills = {
-  invoke: "Using QA-DLC",
+  invoke: "Using QADLC",
   slots: {
     install: [
       "## Installation (Claude Code)",
@@ -17,7 +17,7 @@ const fills: OnboardingFills = {
       "```",
       "",
       "`QA-CLAUDE.md` is kept separate from any existing `CLAUDE.md`. The",
-      "`.claude/rules/qa-dlc.md` stub pulls the conductor into ambient context.",
+      "`.claude/rules/qadlc.md` stub pulls the conductor into ambient context.",
     ].join("\n"),
     mcp: [
       "## Jira integration (optional)",

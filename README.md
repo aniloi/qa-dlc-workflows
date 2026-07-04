@@ -1,11 +1,11 @@
-# QA-DLC Workflows
+# QADLC Workflows
 
 > A deterministic, engine-driven workflow for **Gherkin feature-file authoring**,
 > ported from the [AI-DLC v2 architecture](../aidlc-workflows). This is the v2
 > line and the sole workflow on this branch; the original pure-markdown rule
 > workflow (v1) is preserved on the `main` branch.
 
-QA-DLC turns user stories into production-ready `.feature` files through a
+QADLC turns user stories into production-ready `.feature` files through a
 plan-first, two-phase workflow. It stops *trusting the model to remember* the
 rules: a deterministic engine owns routing, sensors validate the Gherkin, and
 hooks enforce the plan gate — as code, not prose.
@@ -34,7 +34,7 @@ hooks enforce the plan gate — as code, not prose.
 │   ├── tools/                  # engine, graph compiler, state, audit, sensors (bun/TS)
 │   ├── knowledge/              # tier-1 shared + tier-2 per-agent
 │   ├── memory/                 # team + project standing rules
-│   ├── skills/                 # qa-dlc-session-cost, qa-dlc-replay runners
+│   ├── skills/                 # qadlc-session-cost, qadlc-replay runners
 │   └── templates/              # onboarding skeleton, memory template
 ├── harness/<name>/             # per-harness surface (manifest + fills + authored files)
 │   ├── kiro/  claude/          # (codex/cline are one dir + manifest away)
@@ -45,7 +45,7 @@ hooks enforce the plan gate — as code, not prose.
 
 ### The engine/conductor split
 
-A deterministic **engine** (`core/tools/qa-dlc-orchestrate.ts`, subcommands
+A deterministic **engine** (`core/tools/qadlc-orchestrate.ts`, subcommands
 `next` and `report`) reads `aidlc-docs/qa-state.md` + the compiled
 `stage-graph.json`/`scope-grid.json` and emits one typed **directive**
 (`detect-scope` | `run-stage` | `gate` | `done`). The **conductor**
@@ -91,7 +91,7 @@ cp    dist/kiro/QA-AGENTS.md your-project/QA-AGENTS.md
 Then, in your assistant:
 
 ```
-Using QA-DLC, write feature files for CLM-123
+Using QADLC, write feature files for CLM-123
 ```
 
 ## Runtime requirement
@@ -102,6 +102,6 @@ scopes) as a degraded, non-deterministic tier — the engine and sensors need bu
 
 ## Docs
 
-- [User Guide](docs/guide/00-introduction.md) — using QA-DLC
+- [User Guide](docs/guide/00-introduction.md) — using QADLC
 - [Harness Engineer Guide](docs/harness-engineering/00-overview.md) — reshaping it (data, no code)
 - [Developer Reference](docs/reference/00-overview.md) — the code and contracts

@@ -3,12 +3,12 @@
 
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { parseStage, validateStage, validateCompartments } from "../core/tools/qa-dlc-stage-schema.ts";
-import { parseScope, validateScope } from "../core/tools/qa-dlc-scope-schema.ts";
-import { parseSensorManifest, validateSensorManifest } from "../core/tools/qa-dlc-sensor-schema.ts";
-import { parseFeature, realScenarios } from "../core/tools/qa-dlc-gherkin.ts";
-import { compileGraph } from "../core/tools/qa-dlc-graph.ts";
-import { scalarField, listField } from "../core/tools/qa-dlc-lib.ts";
+import { parseStage, validateStage, validateCompartments } from "../core/tools/qadlc-stage-schema.ts";
+import { parseScope, validateScope } from "../core/tools/qadlc-scope-schema.ts";
+import { parseSensorManifest, validateSensorManifest } from "../core/tools/qadlc-sensor-schema.ts";
+import { parseFeature, realScenarios } from "../core/tools/qadlc-gherkin.ts";
+import { compileGraph } from "../core/tools/qadlc-graph.ts";
+import { scalarField, listField } from "../core/tools/qadlc-lib.ts";
 
 const CORE = join(import.meta.dir, "..", "core");
 

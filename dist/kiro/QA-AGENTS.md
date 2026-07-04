@@ -1,9 +1,9 @@
-# QA-DLC — Gherkin Feature File Development Workflow
+# QADLC — Gherkin Feature File Development Workflow
 
 > This file is generated from `core/templates/onboarding.md`. Do not hand-edit a
 > distributed copy — edit the skeleton and run `bun scripts/package.ts`.
 
-QA-DLC (Quality Assurance Development Lifecycle) is a plan-first, two-phase
+QADLC (Quality Assurance Development Lifecycle) is a plan-first, two-phase
 workflow that turns user stories into production-ready `.feature` files. The AI
 never writes a single line of Gherkin until a plan is explicitly approved.
 
@@ -12,12 +12,12 @@ never writes a single line of Gherkin until a plan is explicitly approved.
 Invoke the workflow with:
 
 ```
-Using QA-DLC, write feature files for <Jira key or story path>
+Using QADLC, write feature files for <Jira key or story path>
 ```
 
 When invoked, read and follow the conductor at
 `.kiro/qa-common/conductor.md`, which drives the deterministic engine
-(`.kiro/tools/qa-dlc-orchestrate.ts`). The engine decides which stage
+(`.kiro/tools/qadlc-orchestrate.ts`). The engine decides which stage
 runs next based on the detected scope; the conductor executes each stage well.
 
 ## Installation (Kiro)
@@ -29,7 +29,7 @@ cp -R dist/kiro/.kiro/ your-project/.kiro/
 cp dist/kiro/QA-AGENTS.md your-project/QA-AGENTS.md
 ```
 
-Kiro auto-loads `.kiro/steering/`. Confirm `qa-dlc` appears in the Steering
+Kiro auto-loads `.kiro/steering/`. Confirm `qadlc` appears in the Steering
 Files panel. Use Kiro in Vibe mode.
 
 ## What it does

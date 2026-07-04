@@ -1,4 +1,4 @@
-# Team Memory — Standing QA-DLC Conventions
+# Team Memory — Standing QADLC Conventions
 
 > Team-owned, hand-editable. Loaded before every stage (see
 > `stage-protocol.md` §5). A team rule here **wins on conflict** over a

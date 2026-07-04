@@ -6,7 +6,7 @@
 //   - {{HARNESS_DIR}} — the harness dir token, left UNSUBSTITUTED here so the
 //     packager's single sanctioned transform() (+ rules-rename) handles it,
 //     exactly like every other core/ .md. This module never touches it.
-//   - {{INVOKE}} — the invoke phrase (e.g. "Using QA-DLC"), substituted here.
+//   - {{INVOKE}} — the invoke phrase (e.g. "Using QADLC"), substituted here.
 //   - {{SLOT:<name>}} — named per-harness slots, filled from the harness's
 //     onboarding.fills.ts. A slot with no fill renders empty (intentional
 //     "section omitted"); an UNKNOWN {{SLOT:...}} left in the output throws —
@@ -18,7 +18,7 @@
 
 /** Per-harness fill set: the invoke phrase + the slot bodies. */
 export type OnboardingFills = {
-  /** The invoke phrase this harness documents, e.g. "Using QA-DLC". */
+  /** The invoke phrase this harness documents, e.g. "Using QADLC". */
   invoke: string;
   /**
    * Slot name → markdown body. A slot listed in the skeleton but absent here

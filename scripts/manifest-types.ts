@@ -13,7 +13,7 @@ export type DirMap = { src: string; dst: string };
 
 /**
  * An authored harness file copied from harness/<name>/<src> into the dist tree.
- * By default <dst> is relative to <harnessDir>/ (e.g. .kiro/skills/qa-dlc/SKILL.md).
+ * By default <dst> is relative to <harnessDir>/ (e.g. .kiro/skills/qadlc/SKILL.md).
  * Set projectRoot:true to land it at the dist tree ROOT instead, beside the
  * harness dir (e.g. dist/kiro/QA-AGENTS.md).
  */

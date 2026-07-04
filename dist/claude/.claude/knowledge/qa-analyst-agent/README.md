@@ -16,7 +16,7 @@
 - Read step-definition annotations (`@Given`/`@When`/`@Then` in Java/Kotlin;
   decorators/attributes in other stacks) and record each pattern verbatim.
 - Group by domain; note parameter types.
-- Optionally emit `aidlc-docs/.qa-dlc/step-catalog.json` (`{ "steps": [...] }`)
+- Optionally emit `aidlc-docs/.qadlc/step-catalog.json` (`{ "steps": [...] }`)
   so the `step-existence` sensor can check reuse deterministically.
 
 ## Ambiguity signals

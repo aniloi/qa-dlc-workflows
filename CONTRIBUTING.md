@@ -1,4 +1,4 @@
-# Contributing to QA-DLC Workflows
+# Contributing to QADLC Workflows
 
 Thank you for your interest in contributing! This project is open to improvements, bug fixes, and additions that help QA engineers author better Gherkin tests with AI assistants.
 
@@ -23,14 +23,14 @@ Thank you for your interest in contributing! This project is open to improvement
 
 ## Contribution Guidelines
 
-### Rule Detail Files (`.qa-dlc-rule-details/`)
+### Rule Detail Files (`.qadlc-rule-details/`)
 
 - Keep instructions **generic** — no framework-specific paths, company names, or tool-specific assumptions.
 - Use `<placeholder>` syntax for any path or value that varies by project (e.g., `<framework-root>/src/test/.../steps/`).
 - Each rule detail file should be self-contained and readable in isolation.
 - Do not introduce contradictions between rule files — test your changes end-to-end with an AI assistant before submitting.
 
-### Core Workflow (`qa-dlc-core/core-workflow.md`)
+### Core Workflow (`qadlc-core/core-workflow.md`)
 
 - The two-phase structure (Discovery → Execution) must be preserved.
 - The plan-approval gate (no `.feature` files before `gherkin_plan.md` is approved) is non-negotiable.

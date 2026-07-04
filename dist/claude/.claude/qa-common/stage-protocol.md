@@ -1,6 +1,6 @@
 # Stage Protocol
 
-The behavioral contract every QA-DLC stage follows. Stage files reference this
+The behavioral contract every QADLC stage follows. Stage files reference this
 file rather than repeating it.
 
 ## 1. Approval gates
@@ -60,21 +60,21 @@ statement wins.
 
 Sensors declared in a stage's `sensors:` frontmatter fire automatically on that
 stage's file writes (via the sensor-fire hook, Phase 5). They are **advisory**:
-findings are written to `aidlc-docs/.qa-dlc-sensors/<stage>/` and surfaced at the
+findings are written to `aidlc-docs/.qadlc-sensors/<stage>/` and surfaced at the
 next gate. A failing sensor does not silently block, but you must address or
 consciously accept each finding.
 
 ## §Learn — the learning ritual
 
-Each stage keeps a diary (`aidlc-docs/.qa-dlc-memory/<stage>/memory.md`). Before a
+Each stage keeps a diary (`aidlc-docs/.qadlc-memory/<stage>/memory.md`). Before a
 gate, read it and surface candidates:
 
 - **Prescriptive rule** → write to team memory (`.claude/memory/team.md`
   or `project.md`). Next run loads it automatically.
 - **Verification check** → author a new sensor manifest at
-  `.claude/sensors/qa-dlc-<id>.md` and add `<id>` to the relevant stage's
+  `.claude/sensors/qadlc-<id>.md` and add `<id>` to the relevant stage's
   `sensors:` list.
 
 Stage files are immutable framework artefacts — the ritual writes into the
 harness (memory, sensors), never into the stage file. Recompile the graph
-(`qa-dlc-graph.ts compile`) after wiring a new sensor.
+(`qadlc-graph.ts compile`) after wiring a new sensor.

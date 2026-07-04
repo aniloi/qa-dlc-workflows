@@ -1,7 +1,7 @@
-# QA-DLC session artifacts (optional — commit if you want audit history)
+# QADLC session artifacts (optional — commit if you want audit history)
 aidlc-docs/qa-state.md
 aidlc-docs/audit.md
-aidlc-docs/.qa-dlc-sensors/
+aidlc-docs/.qadlc-sensors/
 
 # Machine-local
 .claude/settings.local.json

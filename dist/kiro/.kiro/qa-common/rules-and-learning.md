@@ -1,13 +1,13 @@
 # Rules and the Learning Loop
 
-QA-DLC gets better at *your* Gherkin over time by promoting recurring corrections
+QADLC gets better at *your* Gherkin over time by promoting recurring corrections
 into standing rules and new deterministic checks. The loop is deliberately small
 and file-driven — no hidden state.
 
 ## The loop
 
 ```
-stage runs → conductor keeps a diary (aidlc-docs/.qa-dlc-memory/<stage>/memory.md)
+stage runs → conductor keeps a diary (aidlc-docs/.qadlc-memory/<stage>/memory.md)
            → before the gate, surfaces candidates
            → user keeps some
            → each kept item is written to ONE of:
@@ -21,7 +21,7 @@ stage runs → conductor keeps a diary (aidlc-docs/.qa-dlc-memory/<stage>/memory
 | The learning is… | Write it to… | Effect |
 |---|---|---|
 | A standing preference ("always tag API scenarios `@api`") | `.kiro/memory/team.md` (or `project.md` if repo-specific) | Loaded before every stage; wins over repo-derived conventions |
-| A repeatable check ("no scenario may exceed 12 steps") | a new `.kiro/sensors/qa-dlc-<id>.md` manifest + a `qa-dlc-sensor-<id>.ts` tool + the `<id>` added to a stage's `sensors:` list | Fires automatically on matching file writes |
+| A repeatable check ("no scenario may exceed 12 steps") | a new `.kiro/sensors/qadlc-<id>.md` manifest + a `qadlc-sensor-<id>.ts` tool + the `<id>` added to a stage's `sensors:` list | Fires automatically on matching file writes |
 
 ## Conflict rule
 
@@ -34,7 +34,7 @@ specific non-empty statement wins at load time.
 
 Stage files are framework artefacts — the loop never edits them. It writes into
 the *harness* (memory + sensors). After adding a sensor, recompile the graph
-(`bun .kiro/tools/qa-dlc-graph.ts compile`) so the new binding takes
+(`bun .kiro/tools/qadlc-graph.ts compile`) so the new binding takes
 effect and the cross-check validates the id.
 
 ## Promoting a memory diary to team memory

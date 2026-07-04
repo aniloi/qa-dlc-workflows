@@ -87,6 +87,6 @@ approval and resolution of every Open Question.
 
 ## Learn
 
-Diary at `aidlc-docs/.qa-dlc-memory/gherkin-plan/memory.md`. Record planning
+Diary at `aidlc-docs/.qadlc-memory/gherkin-plan/memory.md`. Record planning
 decisions (why a criterion mapped to N scenarios, why an outline vs. separate
 scenarios) that could become standing rules.

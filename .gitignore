@@ -1,4 +1,4 @@
-# QA-DLC v2 — dev/machine artifacts only.
+# QADLC v2 — dev/machine artifacts only.
 # dist/ IS committed and drift-guarded (bun scripts/package.ts --check). Do NOT
 # ignore dist/ or the generated .claude/ .kiro/ trees inside it.
 
@@ -13,8 +13,8 @@ Thumbs.db
 .idea/
 .vscode/
 
-# QA-DLC session artifacts (uncomment to exclude an installed workflow's runtime
+# QADLC session artifacts (uncomment to exclude an installed workflow's runtime
 # state from history; by default a project keeps its audit trail).
 # aidlc-docs/qa-state.md
 # aidlc-docs/audit.md
-# aidlc-docs/.qa-dlc-sensors/
+# aidlc-docs/.qadlc-sensors/

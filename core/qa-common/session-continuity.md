@@ -1,12 +1,12 @@
 # Session Continuity
 
-When a user returns to an in-progress QA-DLC session, restore full context before
+When a user returns to an in-progress QADLC session, restore full context before
 doing any work. The engine makes this deterministic: state lives in the tool-owned
 `aidlc-docs/qa-state.md`, so resume is a state read, not a guess.
 
 ## Detection
 
-At workflow start, `bun {{HARNESS_DIR}}/tools/qa-dlc-orchestrate.ts next`:
+At workflow start, `bun {{HARNESS_DIR}}/tools/qadlc-orchestrate.ts next`:
 - If `qa-state.md` exists with a scope, the engine emits the next unfinished stage
   (or the plan gate) directly — this **is** the resume.
 - If no state exists, the engine emits `detect-scope` (a fresh start).
@@ -16,7 +16,7 @@ At workflow start, `bun {{HARNESS_DIR}}/tools/qa-dlc-orchestrate.ts next`:
 On resume, read the state and present:
 
 ```markdown
-**Welcome back — resuming your QA-DLC session.**
+**Welcome back — resuming your QADLC session.**
 - Scope / Depth: <scope> (<depth>)
 - Phase: <phase>
 - Current Stage: <current_stage>  (Status: <stage_status>)

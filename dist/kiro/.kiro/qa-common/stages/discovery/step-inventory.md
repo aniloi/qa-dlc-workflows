@@ -49,7 +49,7 @@ Plan must map each proposed scenario's steps to entries here before proposing an
 new step.
 
 ### Step 4 — Advance
-`bun .kiro/tools/qa-dlc-orchestrate.ts report --stage step-inventory`.
+`bun .kiro/tools/qadlc-orchestrate.ts report --stage step-inventory`.
 
 ## Sensors
 
@@ -59,5 +59,5 @@ files.
 
 ## Learn
 
-Diary at `aidlc-docs/.qa-dlc-memory/step-inventory/memory.md`. Note domains with
+Diary at `aidlc-docs/.qadlc-memory/step-inventory/memory.md`. Note domains with
 sparse coverage (likely sources of new-step requests) for later attention.

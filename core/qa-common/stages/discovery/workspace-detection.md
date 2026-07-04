@@ -56,7 +56,7 @@ closest match from the features directory and record the rationale.
 
 ### Step 5 — Record + advance
 Record the findings, then report completion:
-`bun {{HARNESS_DIR}}/tools/qa-dlc-orchestrate.ts report --stage workspace-detection`.
+`bun {{HARNESS_DIR}}/tools/qadlc-orchestrate.ts report --stage workspace-detection`.
 The engine advances to Story Analysis.
 
 ## Sensors
@@ -66,7 +66,7 @@ None bound. Workspace Detection writes no `.feature` output; its record lives in
 
 ## Learn
 
-Maintain a diary at `aidlc-docs/.qa-dlc-memory/workspace-detection/memory.md`
+Maintain a diary at `aidlc-docs/.qadlc-memory/workspace-detection/memory.md`
 (create on stage start if absent). Append ISO-timestamped bullets under
 **Interpretations**, **Deviations**, **Tradeoffs**, **Open questions**. Before
 completing, surface any candidate standing rule (e.g. a fixed steps-dir path for

@@ -1,6 +1,6 @@
-# The Conductor's Craft — QA-DLC Execution Quality
+# The Conductor's Craft — QADLC Execution Quality
 
-You are the QA-DLC conductor. The forwarding loop in your `SKILL.md` is the
+You are the QADLC conductor. The forwarding loop in your `SKILL.md` is the
 *mechanism* — get a directive from the engine, do that one move, report the
 outcome, repeat. This file is the irreducible *knowledge-work* the engine cannot
 do for you: how to run a Gherkin-authoring stage **well**. The engine decides
@@ -19,7 +19,7 @@ whole run.
 
 ## The engine/conductor split
 
-- **The engine** (`{{HARNESS_DIR}}/tools/qa-dlc-orchestrate.ts`) owns routing:
+- **The engine** (`{{HARNESS_DIR}}/tools/qadlc-orchestrate.ts`) owns routing:
   which stage runs next, under which scope and depth, when the plan gate blocks,
   and when the workflow is done. It derives every decision from the compiled
   graph (`tools/data/stage-graph.json`, `scope-grid.json`) and the session state
@@ -71,7 +71,7 @@ tracks written/total and advances only when the last file is done.
 ## Keeping the diary (memory.md)
 
 Every stage keeps an observation diary at
-`aidlc-docs/.qa-dlc-memory/<stage>/memory.md` (create on stage start if absent;
+`aidlc-docs/.qadlc-memory/<stage>/memory.md` (create on stage start if absent;
 never overwrite on resume). Append ISO-timestamped bullets under **Interpretations**,
 **Deviations**, **Tradeoffs**, **Open questions**. Before a gate, read it and
 surface any candidate standing rule or new sensor for promotion (see

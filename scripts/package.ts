@@ -15,7 +15,7 @@
 //      token substitution on .md. projectRoot files land at the dist tree ROOT.
 //   3. RENDER the onboarding doc from core/templates/onboarding.md + fills.
 //   4. WRITE tools/data/harness.json (the runtime harness descriptor).
-//   5. COMPILE the stage graph if core/tools/qa-dlc-graph.ts exists (Phase 3+).
+//   5. COMPILE the stage graph if core/tools/qadlc-graph.ts exists (Phase 3+).
 //   6. EMIT via harness/<name>/emit.ts if the manifest declares one.
 //   7. ORPHAN SCAN: reject any file in dist/<name> not produced above.
 //
@@ -39,7 +39,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { EmitContext, HarnessManifest } from "./manifest-types.ts";
 import { renderOnboarding } from "./onboarding.ts";
-import { compileGraph } from "../core/tools/qa-dlc-graph.ts";
+import { compileGraph } from "../core/tools/qadlc-graph.ts";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CORE_ROOT = join(REPO_ROOT, "core");
@@ -232,7 +232,7 @@ function regenerate(m: HarnessManifest): void {
 function checkHarness(m: HarnessManifest): string[] {
   const committed = join(DIST_ROOT, m.name);
   const problems: string[] = [];
-  const tmp = mkdtempSync(join(tmpdir(), `qa-dlc-pkg-${m.name}-`));
+  const tmp = mkdtempSync(join(tmpdir(), `qadlc-pkg-${m.name}-`));
   try {
     const written = buildHarness(m, tmp, true);
     const writtenRel = new Set(written.map((p) => relative(tmp, p)));

@@ -1,8 +1,8 @@
-# QA-DLC v2 — Harness Engineer Guide
+# QADLC v2 — Harness Engineer Guide
 
 > [User Guide](../guide/00-introduction.md) · **Harness Engineer Guide** · [Developer Reference](../reference/00-overview.md)
 
-For the person **reshaping** how QA-DLC behaves for their team — without writing
+For the person **reshaping** how QADLC behaves for their team — without writing
 code. Everything here is a Markdown file with YAML frontmatter that the engine
 reads at runtime.
 
@@ -37,10 +37,10 @@ Commit the `core/` edit and the regenerated `dist/` together.
 |---|---|
 | Edit what a stage does | `core/qa-common/stages/<phase>/<slug>.md` |
 | Add/modify an agent | `core/agents/<name>-agent.md` |
-| Tune a scope's stages/depth | `core/scopes/qa-dlc-<name>.md` + each stage's `scopes:` list |
+| Tune a scope's stages/depth | `core/scopes/qadlc-<name>.md` + each stage's `scopes:` list |
 | Teach a standing rule | `core/memory/team.md` or `project.md` |
-| Wire a deterministic check | a manifest `core/sensors/qa-dlc-<id>.md` + a `core/tools/qa-dlc-sensor-<id>.ts` + the `<id>` on a stage's `sensors:` |
-| Add agent domain knowledge | `core/knowledge/<agent>-agent/` (tier-2) or `core/knowledge/qa-dlc-shared/` (tier-1) |
+| Wire a deterministic check | a manifest `core/sensors/qadlc-<id>.md` + a `core/tools/qadlc-sensor-<id>.ts` + the `<id>` on a stage's `sensors:` |
+| Add agent domain knowledge | `core/knowledge/<agent>-agent/` (tier-2) or `core/knowledge/qadlc-shared/` (tier-1) |
 
 ## Adding a stage (sketch)
 
@@ -52,7 +52,7 @@ Commit the `core/` edit and the regenerated `dist/` together.
 
 ## Adding a scope
 
-1. `core/scopes/qa-dlc-<name>.md` with `name`, `depth`, `keywords`, `description`.
+1. `core/scopes/qadlc-<name>.md` with `name`, `depth`, `keywords`, `description`.
 2. Add `<name>` to the `scopes:` list of each stage that should run in it.
 3. Regenerate. The compiler transposes stage membership into the scope grid.
 

@@ -52,7 +52,7 @@ step reuse over invention, correct tagging for the depth.
 Immediately mark that file `[x]` in `gherkin_plan.md`, in the same interaction.
 
 ### Step 3 — Report the file
-`bun .claude/tools/qa-dlc-orchestrate.ts report --stage feature-generation --file <path>`.
+`bun .claude/tools/qadlc-orchestrate.ts report --stage feature-generation --file <path>`.
 This increments the written count and appends a FEATURE_FILE_WRITTEN audit row.
 When the last file is written, add `--done` (or the engine auto-completes once
 written == total). Then it advances to the Cross-Feature Consistency Check.
@@ -61,11 +61,11 @@ written == total). Then it advances to the Cross-Feature Consistency Check.
 
 Bound in Phase 4 (`gherkin-lint`, `step-existence`, `tag-policy`). Each fires on
 every `.feature` write via the sensor-fire hook and writes advisory detail to
-`aidlc-docs/.qa-dlc-sensors/feature-generation/`. Advisory: findings surface at
+`aidlc-docs/.qadlc-sensors/feature-generation/`. Advisory: findings surface at
 the gate; they do not silently block.
 
 ## Learn
 
-Diary at `aidlc-docs/.qa-dlc-memory/feature-generation/memory.md`. Record any new
+Diary at `aidlc-docs/.qadlc-memory/feature-generation/memory.md`. Record any new
 step definition you had to request and why no existing step fit — a repeated
 pattern is a candidate new standing step or a gap to raise with the team.

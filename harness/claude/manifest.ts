@@ -3,7 +3,7 @@
 // Projects the harness-neutral core/ tree into dist/claude/.claude/:
 //   - token {{HARNESS_DIR}} → .claude
 //   - Claude renames no core dir
-//   - authored surfaces: the orchestrator skill, the QA-DLC rules @-stub,
+//   - authored surfaces: the orchestrator skill, the QADLC rules @-stub,
 //     settings.json, project-root install files
 //   - QA-CLAUDE.md renders from the shared skeleton at the project root
 
@@ -23,15 +23,15 @@ const manifest: HarnessManifest = {
     { src: "agents", dst: "agents" },
     { src: "hooks", dst: "hooks" },
     { src: "memory", dst: "memory" },
-    { src: "skills/qa-dlc-session-cost", dst: "skills/qa-dlc-session-cost" },
-    { src: "skills/qa-dlc-replay", dst: "skills/qa-dlc-replay" },
+    { src: "skills/qadlc-session-cost", dst: "skills/qadlc-session-cost" },
+    { src: "skills/qadlc-replay", dst: "skills/qadlc-replay" },
   ],
 
   harnessFiles: [
-    { src: "skills/qa-dlc/SKILL.md", dst: "skills/qa-dlc/SKILL.md" },
-    // The QA-DLC method @-import stub: .claude/rules/qa-dlc.md pulls the
+    { src: "skills/qadlc/SKILL.md", dst: "skills/qadlc/SKILL.md" },
+    // The QADLC method @-import stub: .claude/rules/qadlc.md pulls the
     // conductor + method into Claude's ambient context by reference.
-    { src: "rules-qa-dlc.md", dst: "rules/qa-dlc.md" },
+    { src: "rules-qadlc.md", dst: "rules/qadlc.md" },
     { src: "settings.json", dst: "settings.json" },
     { src: "dot-gitignore", dst: ".gitignore", projectRoot: true },
   ],
