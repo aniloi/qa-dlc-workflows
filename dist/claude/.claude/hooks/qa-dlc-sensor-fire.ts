@@ -32,13 +32,21 @@ try {
 }
 
 const file = (parsed.tool_input?.file_path ?? "").replace(/\\/g, "/");
-if (!file.endsWith(".feature")) process.exit(0);
+const base = file.split("/").pop() ?? "";
 
-// Determine the active stage. In the execution phase this is feature-generation;
-// fall back to it if state is unreadable.
-const state = readState(projectDir);
-const stage =
-  state && state.completed.includes("feature-generation") ? "cross-feature-check" : "feature-generation";
+// Route the write to the stage whose sensors should fire:
+//   - gherkin_plan.md → the plan gate stage (plan-sections)
+//   - *.feature       → feature-generation, or cross-feature-check once that
+//                       foreach stage is complete
+let stage: string;
+if (base === "gherkin_plan.md") {
+  stage = "gherkin-plan";
+} else if (file.endsWith(".feature")) {
+  const state = readState(projectDir);
+  stage = state && state.completed.includes("feature-generation") ? "cross-feature-check" : "feature-generation";
+} else {
+  process.exit(0);
+}
 
 try {
   const dispatcher = join(harness, "tools", "qa-dlc-sensor.ts");

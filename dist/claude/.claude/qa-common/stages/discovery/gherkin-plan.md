@@ -21,7 +21,8 @@ consumes:
 requires_stage:
   - story-analysis
   - step-inventory
-sensors: []
+sensors:
+  - plan-sections
 scopes:
   - smoke
   - single-story
@@ -47,15 +48,30 @@ File. Scale scenario count to the active depth (`depth-levels.md`).
 
 ### Step 2 — Write gherkin_plan.md
 Write `gherkin_plan.md` to the **workspace root** with: User Story Inventory,
-Conventions, Step Reuse Inventory, Story-to-Scenario Mapping, an **Implementation
-Checklist** (one `- [ ]` per feature file), New Step Definitions Required, and
-Open Questions.
+Conventions, Step Reuse Inventory, Story-to-Scenario Mapping, a **Stories Without
+Requirements or Insufficient Acceptance Criteria** gap report (see Step 3), an
+**Implementation Checklist** (one `- [ ]` per feature file), New Step Definitions
+Required, and Open Questions.
 
-### Step 3 — Present + WAIT
+### Step 3 — Requirements gap report
+After the Story-to-Scenario Mapping and before Open Questions, include a
+`## Stories Without Requirements or Insufficient Acceptance Criteria` section
+covering three categories:
+1. **No description at all** — the story field is empty or restates the title.
+2. **Description but no acceptance criteria** — context exists, no testable AC.
+3. **Ambiguous or contradictory** — AC exist but are unclear or conflicting.
+
+Report each with story key, summary, and what is missing, plus an "Implications
+for Testing" note (how many stories lacked requirements, out of the total) and
+recommendations. If every story had sufficient requirements, state that
+explicitly — never omit the section. The `plan-sections` sensor checks it is
+present.
+
+### Step 4 — Present + WAIT
 Present the plan and all Open Questions. **Do not proceed.** Wait for explicit
 approval and resolution of every Open Question.
 
-### Step 4 — Report the gate outcome
+### Step 5 — Report the gate outcome
 - Approved → `report --stage gherkin-plan --approved --feature-count <N>` where
   `<N>` is the number of checklist items. The engine flips the plan gate open and
   advances to the Execution phase.
@@ -64,8 +80,10 @@ approval and resolution of every Open Question.
 
 ## Sensors
 
-None bound. (The plan is prose; the sensors that matter fire on the `.feature`
-files produced in Execution.)
+- **`plan-sections`** fires on writes to `gherkin_plan.md` and verifies the plan
+  carries the required H2 sections — Story-to-Scenario Mapping, the Stories
+  Without Requirements gap report, Implementation Checklist, and Open Questions.
+  Advisory: findings surface at the approval gate.
 
 ## Learn
 

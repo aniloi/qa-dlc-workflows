@@ -47,6 +47,12 @@ Flag stories that are ambiguous, out-of-scope, or contradictory as **Open
 Questions**. Use the `[Answer]:` A–E + X format from `stage-protocol.md`. Do not
 guess where interpretations would meaningfully diverge — ask.
 
+Also classify each story's requirement quality for the plan's gap report (see the
+Gherkin Plan stage): **no description**, **description but no acceptance
+criteria**, or **ambiguous/contradictory**. Carry these classifications forward —
+they populate the "Stories Without Requirements or Insufficient Acceptance
+Criteria" section of `gherkin_plan.md`.
+
 ### Step 4 — Scale to depth
 Scale the analysis to the active depth (`depth-levels.md`): Minimal focuses on
 the happy path per criterion; Comprehensive enumerates negative, boundary, and

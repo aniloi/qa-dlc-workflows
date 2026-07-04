@@ -95,6 +95,15 @@ describe("sensors", () => {
     expect(ids).toContain("gherkin-lint");
     expect(ids).toContain("tag-policy");
   });
+
+  test("plan-sections flags a plan missing the gap report, passes a complete one", () => {
+    writeFileSync(join(proj, "gherkin_plan.md"), "# Plan\n\n## Story-to-Scenario Mapping\nx\n\n## Implementation Checklist\n- [ ] a-b.feature\n\n## Open Questions\nnone\n");
+    const bad = JSON.parse(run(tool("qa-dlc-sensor-plan-sections.ts"), ["--stage", "gherkin-plan", "--file-path", "gherkin_plan.md"]).out);
+    expect(bad.findings.some((f: { rule: string }) => f.rule === "missing-plan-section")).toBe(true);
+    writeFileSync(join(proj, "gherkin_plan.md"), "# Plan\n\n## Story-to-Scenario Mapping\nx\n\n## Stories Without Requirements or Insufficient Acceptance Criteria\nAll stories had sufficient requirements.\n\n## Implementation Checklist\n- [ ] a-b.feature\n\n## Open Questions\nnone\n");
+    const good = JSON.parse(run(tool("qa-dlc-sensor-plan-sections.ts"), ["--stage", "gherkin-plan", "--file-path", "gherkin_plan.md"]).out);
+    expect(good.pass).toBe(true);
+  });
 });
 
 describe("stop-hook enforcement", () => {

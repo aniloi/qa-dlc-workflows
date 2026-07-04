@@ -156,7 +156,9 @@
         "story-analysis",
         "step-inventory"
       ],
-      "sensors": [],
+      "sensors": [
+        "plan-sections"
+      ],
       "scopes": [
         "smoke",
         "single-story",
