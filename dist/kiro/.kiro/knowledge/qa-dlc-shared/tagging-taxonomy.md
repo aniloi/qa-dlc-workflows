@@ -21,3 +21,11 @@ recorded in `.kiro/memory/project.md`.
 ## Optional modifiers
 
 `@negative` (error/invalid-input scenarios), plus any team-defined modifiers.
+
+## Jira / Allure traceability
+
+When a session is started from a Jira key (Jira mode), every scenario must carry
+`@allure.label.jira=<ISSUE-KEY>` (e.g. `@allure.label.jira=CLM-5515`) so results
+trace back to the ticket in Allure. The `tag-policy` sensor enforces this
+automatically in Jira mode (it reads `story_source` from `qa-state.md`); for
+file/folder input the tag is optional.

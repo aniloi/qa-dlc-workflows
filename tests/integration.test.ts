@@ -111,6 +111,41 @@ describe("stop-hook enforcement", () => {
   });
 });
 
+describe("tag-policy Jira mode", () => {
+  function scaffold(storySource: string): string {
+    const p = mkdtempSync(join(tmpdir(), "qa-dlc-jira-"));
+    cpSync(DIST_KIRO, join(p, ".kiro"), { recursive: true });
+    mkdirSync(join(p, "features"), { recursive: true });
+    spawnSync("bun", [join(p, ".kiro", "tools", "qa-dlc-orchestrate.ts"), "report", "--scope", "smoke", "--story-source", storySource], { cwd: p });
+    return p;
+  }
+  function tagPolicy(p: string, rel: string) {
+    const r = spawnSync("bun", [join(p, ".kiro", "tools", "qa-dlc-sensor-tag-policy.ts"), "--stage", "feature-generation", "--file-path", rel], { cwd: p, encoding: "utf-8" });
+    return JSON.parse(r.stdout ?? "{}");
+  }
+  const noJira = "@smoke\nFeature: X\n  @account\n  Scenario: y\n    Given a\n    Then b\n";
+  const withJira = "@smoke\nFeature: X\n  @account @allure.label.jira=CLM-1\n  Scenario: y\n    Given a\n    Then b\n";
+
+  test("Jira mode flags a scenario missing @allure.label.jira", () => {
+    const p = scaffold("jira");
+    writeFileSync(join(p, "features", "x.feature"), noJira);
+    const res = tagPolicy(p, "features/x.feature");
+    expect(res.findings.some((f: { rule: string }) => f.rule === "missing-jira-tag")).toBe(true);
+    writeFileSync(join(p, "features", "x.feature"), withJira);
+    const ok = tagPolicy(p, "features/x.feature");
+    expect(ok.findings.some((f: { rule: string }) => f.rule === "missing-jira-tag")).toBe(false);
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("folder mode does NOT require the Jira tag", () => {
+    const p = scaffold("folder");
+    writeFileSync(join(p, "features", "x.feature"), noJira);
+    const res = tagPolicy(p, "features/x.feature");
+    expect(res.findings.some((f: { rule: string }) => f.rule === "missing-jira-tag")).toBe(false);
+    rmSync(p, { recursive: true, force: true });
+  });
+});
+
 describe("packaging drift guard", () => {
   test("package --check reports no drift", () => {
     const r = spawnSync("bun", [join(REPO, "scripts", "package.ts"), "--check"], { encoding: "utf-8", cwd: REPO });

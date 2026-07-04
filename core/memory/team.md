@@ -13,6 +13,9 @@
 - `@smoke` = the minimal deploy-gate set; keep it small and fast.
 - Draft scenarios from the `exploratory` scope are tagged `@exploratory` and are
   never counted as shipping coverage.
+- **Jira mode**: when the workflow is started from a Jira key, every scenario must
+  also carry `@allure.label.jira=<ISSUE-KEY>` (enforced by the `tag-policy`
+  sensor). Optional for file/folder input.
 
 ## Naming
 
