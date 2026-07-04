@@ -49,8 +49,12 @@ non-gate stages). No emergent free-form endings — keep them predictable.
 
 Before running a stage, load in order: (1) the lead agent's file, (2) the agent's
 knowledge dir under `{{HARNESS_DIR}}/knowledge/<agent>/` if present, (3) team
-memory under `{{HARNESS_DIR}}/memory/` (team rule wins on conflict). The most
-specific non-empty statement wins.
+memory under `{{HARNESS_DIR}}/memory/` (team rule wins on conflict), and (4) the
+**project knowledge base** — a `kb/` directory (or the location named in
+`memory/project.md`) carrying domain facts, business rules, and a glossary. Load
+only the KB slices relevant to the work (its index maps story prefixes and domain
+keywords to sections); never load the whole KB. The most specific non-empty
+statement wins.
 
 ## 6. Sensors
 

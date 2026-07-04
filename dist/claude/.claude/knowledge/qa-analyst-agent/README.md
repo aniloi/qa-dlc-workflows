@@ -24,3 +24,12 @@
 Vague quantifiers ("some", "most"), undefined states ("logged in" without a
 role), and missing error behavior are the most common gaps — raise them as Open
 Questions rather than assuming.
+
+## Using the project knowledge base
+
+When the project ships a `kb/` (see `memory/project.md`), load the relevant
+slices during Story Analysis (per `stage-protocol.md` §5): the index maps story
+prefixes and domain keywords to sections; always read the glossary/agent-notes.
+Use it to resolve domain terms and to surface **implied** acceptance criteria a
+story author left unwritten — business rules, prerequisite states, and error
+conditions that become `Given` setup and negative scenarios in the plan.

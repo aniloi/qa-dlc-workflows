@@ -9,7 +9,18 @@
 <!-- Fixed paths the workflow should not re-detect each run, e.g.:
 - Steps directory: src/test/java/com/acme/steps/
 - Features directory: src/test/resources/features/
-- Style reference: features/account/accountSmoke.feature
+- Style reference: features/account/account-smoke.feature
+- Knowledge base: kb/ (index at kb/index.md; glossary at kb/glossary/agent-notes.md)
+-->
+
+## Knowledge base (project tier-2)
+
+<!-- If this project ships a kb/, describe its index location and the maps the
+story-analysis stage uses:
+- Root index: kb/index.md
+- Story-prefix → sections map (e.g. CLM-/UA-/ES- → which KB areas)
+- Domain-keyword → category map
+- Always-load glossary: kb/glossary/agent-notes.md
 -->
 
 ## Component tag vocabulary
