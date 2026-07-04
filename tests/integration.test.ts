@@ -1,0 +1,119 @@
+// tests/integration.test.ts — end-to-end coverage against a temp copy of the
+// generated dist/kiro tree: the engine's next/report loop and plan gate, the
+// sensors, the stop-hook enforcement, and the packaging drift guard.
+
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const REPO = join(import.meta.dir, "..");
+const DIST_KIRO = join(REPO, "dist", "kiro", ".kiro");
+
+let proj = "";
+const H = () => join(proj, ".kiro");
+const tool = (t: string) => join(H(), "tools", t);
+const hook = (h: string) => join(H(), "hooks", h);
+
+function run(bin: string, args: string[], input?: string) {
+  const r = spawnSync("bun", [bin, ...args], { encoding: "utf-8", cwd: proj, input });
+  return { out: r.stdout ?? "", err: r.stderr ?? "", code: r.status ?? 0 };
+}
+
+beforeAll(() => {
+  proj = mkdtempSync(join(tmpdir(), "qa-dlc-it-"));
+  cpSync(DIST_KIRO, H(), { recursive: true });
+  mkdirSync(join(proj, "features"), { recursive: true });
+});
+afterAll(() => rmSync(proj, { recursive: true, force: true }));
+
+describe("engine next/report + plan gate", () => {
+  test("detect-scope when no session", () => {
+    const { out } = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    expect(out).toContain('"type": "detect-scope"');
+  });
+
+  test("init + first move carries persona and workspace-detection", () => {
+    run(tool("qa-dlc-orchestrate.ts"), ["report", "--scope", "smoke"]);
+    const { out } = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    expect(out).toContain('"type": "run-stage"');
+    expect(out).toContain("workspace-detection");
+    expect(out).toContain("conductor_persona");
+  });
+
+  test("execution is gated until the plan is approved", () => {
+    for (const s of ["workspace-detection", "story-analysis", "convention-extraction", "step-inventory"]) {
+      run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", s]);
+    }
+    // completing the gate WITHOUT approval keeps it closed
+    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "gherkin-plan"]);
+    const gated = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    expect(gated.out).toContain('"type": "gate"');
+
+    // approve → advances into execution
+    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "gherkin-plan", "--approved", "--feature-count", "2"]);
+    const after = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    expect(after.out).toContain("feature-generation");
+    expect(after.out).toContain('"foreach": true');
+  });
+
+  test("foreach completes and workflow reaches done", () => {
+    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "feature-generation", "--file", "features/a.feature"]);
+    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "feature-generation", "--file", "features/b.feature"]);
+    run(tool("qa-dlc-orchestrate.ts"), ["next"]); // cross-feature-check
+    run(tool("qa-dlc-orchestrate.ts"), ["report", "--stage", "cross-feature-check"]);
+    const done = run(tool("qa-dlc-orchestrate.ts"), ["next"]);
+    expect(done.out).toContain('"type": "done"');
+  });
+});
+
+describe("sensors", () => {
+  test("gherkin-lint flags a leading-conjunction scenario", () => {
+    writeFileSync(join(proj, "features", "bad.feature"), "Feature: B\n\n  Scenario: x\n    And nope\n    Then y\n");
+    const { out } = run(tool("qa-dlc-sensor-gherkin-lint.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
+    const res = JSON.parse(out);
+    expect(res.pass).toBe(false);
+    expect(res.findings.some((f: { rule: string }) => f.rule === "leading-conjunction")).toBe(true);
+  });
+
+  test("tag-policy flags a scenario with no tags", () => {
+    const { out } = run(tool("qa-dlc-sensor-tag-policy.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
+    expect(JSON.parse(out).pass).toBe(false);
+  });
+
+  test("dispatcher runs bound sensors and reports statuses", () => {
+    const { out } = run(tool("qa-dlc-sensor.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
+    const res = JSON.parse(out);
+    const ids = res.ran.map((r: { id: string }) => r.id);
+    expect(ids).toContain("gherkin-lint");
+    expect(ids).toContain("tag-policy");
+  });
+});
+
+describe("stop-hook enforcement", () => {
+  test("blocks when a feature precedes plan approval", () => {
+    const p2 = mkdtempSync(join(tmpdir(), "qa-dlc-stop-"));
+    cpSync(DIST_KIRO, join(p2, ".kiro"), { recursive: true });
+    mkdirSync(join(p2, "features"), { recursive: true });
+    const orch = join(p2, ".kiro", "tools", "qa-dlc-orchestrate.ts");
+    const stop = join(p2, ".kiro", "hooks", "qa-dlc-stop.ts");
+    spawnSync("bun", [orch, "report", "--scope", "smoke"], { cwd: p2 });
+    // log a feature artifact before approval via the audit-logger
+    writeFileSync(join(p2, "features", "x.feature"), "Feature: X\n  @smoke\n  Scenario: y\n    Given a\n    Then b\n");
+    spawnSync("bun", [join(p2, ".kiro", "hooks", "qa-dlc-audit-logger.ts")], {
+      cwd: p2,
+      input: JSON.stringify({ tool_name: "Write", tool_input: { file_path: join(p2, "features", "x.feature") } }),
+    });
+    const r = spawnSync("bun", [stop], { cwd: p2, input: "{}", encoding: "utf-8" });
+    expect(r.stdout).toContain('"decision":"block"');
+    rmSync(p2, { recursive: true, force: true });
+  });
+});
+
+describe("packaging drift guard", () => {
+  test("package --check reports no drift", () => {
+    const r = spawnSync("bun", [join(REPO, "scripts", "package.ts"), "--check"], { encoding: "utf-8", cwd: REPO });
+    expect(r.status).toBe(0);
+  });
+});

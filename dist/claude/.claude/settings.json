@@ -1,0 +1,35 @@
+{
+  "$comment": "QA-DLC Claude Code settings. Hooks are advisory except the Stop hook, which enforces the plan-approval gate and checkbox discipline. Paths are relative to the project root; Claude Code runs them with bun.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bun .claude/hooks/qa-dlc-session-start.ts" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "bun .claude/hooks/qa-dlc-audit-logger.ts" },
+          { "type": "command", "command": "bun .claude/hooks/qa-dlc-sensor-fire.ts" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bun .claude/hooks/qa-dlc-stop.ts" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bun .claude/hooks/qa-dlc-session-end.ts" }
+        ]
+      }
+    ]
+  }
+}

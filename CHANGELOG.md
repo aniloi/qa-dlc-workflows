@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [v2.0.0] — 2026-07-03
+
+Complete re-architecture. This branch (`v2`) replaces the pure-markdown rule
+workflow with a deterministic, engine-driven implementation ported from the
+AI-DLC v2 architecture. The v1 rule workflow is preserved on the `main` branch.
+
+### Added
+
+- **Build model** — author once in `core/`, generate per-harness trees
+  (`dist/{claude,kiro}`) via `bun scripts/package.ts`, byte-for-byte drift-guarded
+  with `--check`. Adding a harness is one `harness/<name>/` dir + manifest.
+- **Engine/conductor split** — a deterministic engine (`qa-dlc-orchestrate.ts`
+  `next`/`report`) drives a compiled stage graph; the conductor executes.
+- **Scopes × depth** — smoke, single-story, regression, bugfix-repro, exploratory
+  × Minimal/Standard/Comprehensive.
+- **Sensors** — deterministic Gherkin checks (gherkin-lint, tag-policy,
+  duplicate-scenario-name, step-existence) with a dispatcher.
+- **Hooks** — auto-audit logging, sensor-fire, session start/end, and a **stop
+  hook that blocks a `.feature` written before plan approval**.
+- **Two-tier knowledge + team/project memory + a learning loop**, and
+  `qa-dlc-session-cost` / `qa-dlc-replay` runner skills.
+- **Test suite** — `bun test` covering schema, graph determinism, engine + plan
+  gate, sensors, the stop-hook, and the packaging drift guard.
+
+### Changed
+
+- Repository root now holds the v2 workflow (`core/`, `harness/`, `scripts/`,
+  `dist/`, `tests/`). The v1 `qa-dlc-rules/` tree is removed on this branch.
+
+### Removed
+
+- The v1 pure-markdown rule tree (`qa-dlc-rules/`) and v1 docs — preserved on `main`.
+
+---
+
 ## [v1.0.0] — 2026-04-08
 
 ### Added

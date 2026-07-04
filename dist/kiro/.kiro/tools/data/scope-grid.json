@@ -1,0 +1,94 @@
+{
+  "scopes": {
+    "bugfix-repro": {
+      "depth": "Minimal",
+      "keywords": [
+        "bug",
+        "bugfix",
+        "regression bug",
+        "reproduce",
+        "repro",
+        "defect"
+      ],
+      "stages": [
+        "workspace-detection",
+        "story-analysis",
+        "step-inventory",
+        "gherkin-plan",
+        "feature-generation"
+      ]
+    },
+    "exploratory": {
+      "depth": "Minimal",
+      "keywords": [
+        "exploratory",
+        "draft",
+        "spike",
+        "rough",
+        "prototype scenarios"
+      ],
+      "stages": [
+        "workspace-detection",
+        "story-analysis",
+        "step-inventory",
+        "gherkin-plan",
+        "feature-generation"
+      ]
+    },
+    "regression": {
+      "depth": "Comprehensive",
+      "keywords": [
+        "regression",
+        "full coverage",
+        "exhaustive",
+        "epic",
+        "release"
+      ],
+      "stages": [
+        "workspace-detection",
+        "story-analysis",
+        "convention-extraction",
+        "step-inventory",
+        "gherkin-plan",
+        "feature-generation",
+        "cross-feature-check"
+      ]
+    },
+    "single-story": {
+      "depth": "Standard",
+      "keywords": [
+        "single story",
+        "one story",
+        "this story",
+        "single ticket"
+      ],
+      "stages": [
+        "workspace-detection",
+        "story-analysis",
+        "convention-extraction",
+        "step-inventory",
+        "gherkin-plan",
+        "feature-generation",
+        "cross-feature-check"
+      ]
+    },
+    "smoke": {
+      "depth": "Minimal",
+      "keywords": [
+        "smoke",
+        "happy path",
+        "sanity",
+        "quick check"
+      ],
+      "stages": [
+        "workspace-detection",
+        "story-analysis",
+        "convention-extraction",
+        "step-inventory",
+        "gherkin-plan",
+        "feature-generation",
+        "cross-feature-check"
+      ]
+    }
+  }
+}

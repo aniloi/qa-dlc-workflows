@@ -1,0 +1,246 @@
+{
+  "phases": [
+    "discovery",
+    "execution"
+  ],
+  "stages": [
+    {
+      "slug": "workspace-detection",
+      "phase": "discovery",
+      "execution": "ALWAYS",
+      "condition": "Always executes — the first move of every session",
+      "lead_agent": "qa-analyst-agent",
+      "support_agents": [],
+      "mode": "inline",
+      "reviewer": "",
+      "reviewer_max_iterations": 0,
+      "gate": false,
+      "foreach": false,
+      "produces": [
+        "workspace-record"
+      ],
+      "consumes": [],
+      "requires_stage": [],
+      "sensors": [],
+      "scopes": [
+        "smoke",
+        "single-story",
+        "regression",
+        "bugfix-repro",
+        "exploratory"
+      ],
+      "inputs": "The user's request (story source, optional style-reference hint)",
+      "outputs": "workspace-record in qa-state.md (repo root, steps dir, features dir, style reference, story source)",
+      "order": 1
+    },
+    {
+      "slug": "story-analysis",
+      "phase": "discovery",
+      "execution": "ALWAYS",
+      "condition": "Always executes",
+      "lead_agent": "qa-analyst-agent",
+      "support_agents": [],
+      "mode": "inline",
+      "reviewer": "",
+      "reviewer_max_iterations": 0,
+      "gate": false,
+      "foreach": false,
+      "produces": [
+        "story-analysis"
+      ],
+      "consumes": [
+        "workspace-record"
+      ],
+      "requires_stage": [
+        "workspace-detection"
+      ],
+      "sensors": [],
+      "scopes": [
+        "smoke",
+        "single-story",
+        "regression",
+        "bugfix-repro",
+        "exploratory"
+      ],
+      "inputs": "User story files (or the bug report, for bugfix-repro)",
+      "outputs": "story-analysis notes (per-story summary, acceptance criteria, open questions)",
+      "order": 2
+    },
+    {
+      "slug": "convention-extraction",
+      "phase": "discovery",
+      "execution": "ALWAYS",
+      "condition": "Runs for smoke, single-story, regression; skipped for bugfix-repro and exploratory",
+      "lead_agent": "qa-reviewer-agent",
+      "support_agents": [],
+      "mode": "inline",
+      "reviewer": "",
+      "reviewer_max_iterations": 0,
+      "gate": false,
+      "foreach": false,
+      "produces": [
+        "conventions"
+      ],
+      "consumes": [
+        "workspace-record"
+      ],
+      "requires_stage": [
+        "workspace-detection"
+      ],
+      "sensors": [],
+      "scopes": [
+        "smoke",
+        "single-story",
+        "regression"
+      ],
+      "inputs": "The selected style-reference .feature file + existing feature files",
+      "outputs": "conventions notes (tagging, naming, Background usage, abstraction level)",
+      "order": 3
+    },
+    {
+      "slug": "step-inventory",
+      "phase": "discovery",
+      "execution": "ALWAYS",
+      "condition": "Always executes",
+      "lead_agent": "qa-analyst-agent",
+      "support_agents": [],
+      "mode": "inline",
+      "reviewer": "",
+      "reviewer_max_iterations": 0,
+      "gate": false,
+      "foreach": false,
+      "produces": [
+        "step-inventory"
+      ],
+      "consumes": [
+        "workspace-record"
+      ],
+      "requires_stage": [
+        "workspace-detection"
+      ],
+      "sensors": [],
+      "scopes": [
+        "smoke",
+        "single-story",
+        "regression",
+        "bugfix-repro",
+        "exploratory"
+      ],
+      "inputs": "All step-definition classes under the steps directory (READ ONLY)",
+      "outputs": "step-inventory grouped by domain, with Cucumber expressions / regex and parameterization",
+      "order": 4
+    },
+    {
+      "slug": "gherkin-plan",
+      "phase": "discovery",
+      "execution": "ALWAYS",
+      "condition": "Always executes — the approval GATE between Discovery and Execution",
+      "lead_agent": "gherkin-author-agent",
+      "support_agents": [
+        "qa-reviewer-agent"
+      ],
+      "mode": "inline",
+      "reviewer": "qa-reviewer-agent",
+      "reviewer_max_iterations": 2,
+      "gate": true,
+      "foreach": false,
+      "produces": [
+        "gherkin-plan"
+      ],
+      "consumes": [
+        "story-analysis",
+        "conventions",
+        "step-inventory"
+      ],
+      "requires_stage": [
+        "story-analysis",
+        "step-inventory"
+      ],
+      "sensors": [],
+      "scopes": [
+        "smoke",
+        "single-story",
+        "regression",
+        "bugfix-repro",
+        "exploratory"
+      ],
+      "inputs": "story-analysis, conventions (if extracted), step-inventory",
+      "outputs": "gherkin_plan.md at the workspace root (story→scenario mapping, reuse inventory, checklist, new steps, open questions)",
+      "order": 5
+    },
+    {
+      "slug": "feature-generation",
+      "phase": "execution",
+      "execution": "ALWAYS",
+      "condition": "Runs after plan approval — one .feature file at a time per the checklist",
+      "lead_agent": "gherkin-author-agent",
+      "support_agents": [],
+      "mode": "inline",
+      "reviewer": "",
+      "reviewer_max_iterations": 0,
+      "gate": false,
+      "foreach": true,
+      "produces": [
+        "feature-files"
+      ],
+      "consumes": [
+        "gherkin-plan",
+        "step-inventory",
+        "conventions"
+      ],
+      "requires_stage": [
+        "gherkin-plan"
+      ],
+      "sensors": [
+        "gherkin-lint",
+        "tag-policy",
+        "step-existence"
+      ],
+      "scopes": [
+        "smoke",
+        "single-story",
+        "regression",
+        "bugfix-repro",
+        "exploratory"
+      ],
+      "inputs": "Approved gherkin_plan.md (Implementation Checklist), step-inventory, conventions",
+      "outputs": "One .feature file per checklist item, written under the features directory",
+      "order": 1
+    },
+    {
+      "slug": "cross-feature-check",
+      "phase": "execution",
+      "execution": "ALWAYS",
+      "condition": "Runs for smoke, single-story, regression; skipped for bugfix-repro and exploratory",
+      "lead_agent": "qa-reviewer-agent",
+      "support_agents": [],
+      "mode": "inline",
+      "reviewer": "",
+      "reviewer_max_iterations": 0,
+      "gate": false,
+      "foreach": false,
+      "produces": [
+        "consistency-report"
+      ],
+      "consumes": [
+        "feature-files",
+        "conventions"
+      ],
+      "requires_stage": [
+        "feature-generation"
+      ],
+      "sensors": [
+        "duplicate-scenario-name",
+        "tag-policy"
+      ],
+      "scopes": [
+        "smoke",
+        "single-story",
+        "regression"
+      ],
+      "inputs": "All newly written .feature files, conventions",
+      "outputs": "consistency-report (issues found + resolutions) and the final completion summary",
+      "order": 2
+    }
+  ]
+}
