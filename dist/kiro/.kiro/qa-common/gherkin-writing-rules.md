@@ -40,7 +40,7 @@ component tag.** Depth (`depth-levels.md`) sets how much negative/boundary/
 data-driven coverage to include.
 
 ## Naming
-- Feature files: `camelCase.feature` (e.g. `depositSmoke.feature`).
+- Feature files: `kebab-case.feature` (e.g. `deposit-smoke.feature`) — no spaces, underscores, uppercase, or ticket numbers.
 - Scenario names: concise, unique, descriptive of the specific behavior — not the
   user-story title.
 

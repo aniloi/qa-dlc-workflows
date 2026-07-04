@@ -77,6 +77,12 @@ describe("sensors", () => {
     expect(res.findings.some((f: { rule: string }) => f.rule === "leading-conjunction")).toBe(true);
   });
 
+  test("gherkin-lint flags a non-kebab-case filename", () => {
+    writeFileSync(join(proj, "features", "loginSmoke.feature"), "@smoke\nFeature: L\n\n  @auth\n  Scenario: s\n    Given a\n    Then b\n");
+    const { out } = run(tool("qa-dlc-sensor-gherkin-lint.ts"), ["--stage", "feature-generation", "--file-path", "features/loginSmoke.feature"]);
+    expect(JSON.parse(out).findings.some((f: { rule: string }) => f.rule === "naming-convention")).toBe(true);
+  });
+
   test("tag-policy flags a scenario with no tags", () => {
     const { out } = run(tool("qa-dlc-sensor-tag-policy.ts"), ["--stage", "feature-generation", "--file-path", "features/bad.feature"]);
     expect(JSON.parse(out).pass).toBe(false);

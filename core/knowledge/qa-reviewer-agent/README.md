@@ -17,7 +17,7 @@
   is the machine check; confirm its findings).
 - No conflicting or near-duplicate step wordings.
 - Tag policy holds on every scenario (the `tag-policy` sensor checks this).
-- Naming convention consistent (`camelCase.feature`).
+- Naming convention consistent (`kebab-case.feature`).
 - Abstraction level uniform across the new suite.
 
 ## Reading sensor findings

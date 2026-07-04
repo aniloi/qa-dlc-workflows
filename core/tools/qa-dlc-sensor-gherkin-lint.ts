@@ -8,8 +8,11 @@
 // dispatcher treats it as an advisory pass).
 
 import { existsSync, readFileSync } from "node:fs";
+import { basename } from "node:path";
 import { parseArgs, printJson, type Finding } from "./qa-dlc-sensor-lib.ts";
 import { parseFeature, realScenarios } from "./qa-dlc-gherkin.ts";
+
+const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*\.feature$/;
 
 function main(): void {
   const { filePath } = parseArgs(process.argv.slice(2), "qa-dlc-sensor-gherkin-lint");
@@ -21,6 +24,17 @@ function main(): void {
   const raw = readFileSync(filePath, "utf-8");
   const f = parseFeature(raw);
   const findings: Finding[] = [];
+
+  // Filename convention: kebab-case, no spaces/underscores/uppercase, and no
+  // embedded Jira ticket (e.g. clm-1234-...). Lowercase Jira keys would pass the
+  // kebab shape, so also reject a <letters>-<digits> segment that looks like a
+  // ticket number.
+  const name = basename(filePath);
+  if (!KEBAB.test(name)) {
+    findings.push({ line: 1, rule: "naming-convention", message: `"${name}" is not kebab-case (lowercase words joined by hyphens, e.g. deposit-smoke.feature)` });
+  } else if (/(^|-)[a-z]{2,}-\d+(-|\.)/.test(name)) {
+    findings.push({ line: 1, rule: "naming-convention", message: `"${name}" appears to embed a Jira ticket number; keep ticket numbers out of file names` });
+  }
 
   if (f.name === "") findings.push({ line: 1, rule: "feature-required", message: "no Feature: declaration" });
 

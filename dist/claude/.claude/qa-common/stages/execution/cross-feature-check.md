@@ -41,7 +41,7 @@ Validate across **all** newly written `.feature` files:
 - No duplicate scenario names across files
 - No conflicting or near-duplicate step wordings
 - Consistent tagging: every scenario has ≥1 scope tag and ≥1 component tag
-- Feature file names follow the `camelCase.feature` convention
+- Feature file names follow the `kebab-case.feature` convention (no ticket numbers)
 - Abstraction level is consistently declarative
 
 ### Step 2 — Resolve or flag

@@ -42,7 +42,7 @@ Capture:
 - `Background` vs. inline setup usage
 - Tagging conventions (`@smoke`, `@regression`, `@e2e`, `@negative`, component tags)
 - Data-table and `Scenario Outline` patterns
-- Feature file naming convention (typically `camelCase.feature`)
+- Feature file naming convention (`kebab-case.feature` — no ticket numbers)
 - Abstraction level — declarative, not procedural
 
 ### Step 3 — Reconcile with team memory

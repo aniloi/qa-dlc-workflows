@@ -19,7 +19,7 @@
 
 ## Naming
 
-- Feature files: `camelCase.feature`.
+- Feature files: `kebab-case.feature` (no ticket numbers).
 - Scenario names: specific behavior, unique across the suite, not the story title.
 
 ## Structure

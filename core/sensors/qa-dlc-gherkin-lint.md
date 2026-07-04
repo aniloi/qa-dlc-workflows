@@ -3,7 +3,7 @@ id: gherkin-lint
 kind: deterministic
 command: bun {{HARNESS_DIR}}/tools/qa-dlc-sensor-gherkin-lint.ts
 default_severity: advisory
-description: Structural lint of a .feature file — Feature/scenario/step shape, outline Examples, no empty or leading-conjunction scenarios
+description: Structural lint of a .feature file — kebab-case filename, Feature/scenario/step shape, outline Examples, no empty or leading-conjunction scenarios
 category: gherkin-shape
 matches: "**/*.feature"
 timeout_seconds: 10
