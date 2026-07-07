@@ -20,6 +20,10 @@ When invoked, read and follow the conductor at
 (`.claude/tools/qadlc-orchestrate.ts`). The engine decides which stage
 runs next based on the detected scope; the conductor executes each stage well.
 
+You can also pass flags after the trigger — forwarded to the engine unchanged:
+`--resume` (resume a session), `--scope <name>` / `--depth <level>`,
+`--stage <slug>` / `--phase <name>` (jump the pointer), `--doctor`, `--version`.
+
 ## Installation (Claude Code)
 
 Copy the generated tree into your project:

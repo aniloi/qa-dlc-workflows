@@ -48,7 +48,7 @@ hooks enforce the plan gate — as code, not prose.
 A deterministic **engine** (`core/tools/qadlc-orchestrate.ts`, subcommands
 `next` and `report`) reads `aidlc-docs/qa-state.md` + the compiled
 `stage-graph.json`/`scope-grid.json` and emits one typed **directive**
-(`detect-scope` | `run-stage` | `gate` | `done`). The **conductor**
+(`detect-scope` | `run-stage` | `gate` | `done` | `print` | `resume`). The **conductor**
 (`core/qa-common/conductor.md`, carried by each harness's `SKILL.md`) executes
 that one move well, then reports the outcome. Routing is the engine's; execution
 quality is the conductor's.
@@ -93,6 +93,10 @@ Then, in your assistant:
 ```
 Using QADLC, write feature files for CLM-123
 ```
+
+Pass flags after `/qadlc` to drive the engine directly: `--resume`,
+`--scope <name>`, `--depth <level>`, `--stage <slug>` / `--phase <name>` (jump),
+`--doctor`, `--version`.
 
 ## Runtime requirement
 

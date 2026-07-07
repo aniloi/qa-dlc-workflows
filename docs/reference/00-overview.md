@@ -40,22 +40,42 @@ from `harness/*/manifest.ts`.
 
 ## The directive contract
 
-`next` prints one JSON directive:
+`next [flags]` prints one JSON directive:
 
 ```jsonc
 {
-  "type": "detect-scope" | "run-stage" | "gate" | "done",
+  "type": "detect-scope" | "run-stage" | "gate" | "done" | "print" | "resume",
   "conductor_persona": "…",   // only while nothing is completed (first move)
   "scope": "smoke", "depth": "Minimal",
   "stage": { "slug", "phase", "mode", "lead_agent", "support_agents",
              "gate", "foreach", "produces", "consumes", "sensors",
-             "stage_file", "feature_files_total?", "feature_files_written?" }
+             "stage_file", "feature_files_total?", "feature_files_written?" },
+  "command": "bun …/qadlc-orchestrate.ts report …",  // print: run this next
+  "readonly": true,                                   // print: version/doctor/error — nothing to run
+  "state_summary": { … }, "options": ["…"]            // resume: summary + choice menu
 }
 ```
 
+### Flags — the `/qadlc` surface
+
+The conductor forwards everything after `/qadlc` to `next` unchanged. `next`
+stays read-only: a flag that implies a state change resolves to a `print`
+directive whose `command` names the exact `report` call for the conductor to run.
+
+| Flag | Directive | Effect |
+|---|---|---|
+| `--version` | `print` (readonly) | framework version, from `harness.json` |
+| `--doctor` | `print` (readonly) | checks bun, compiled data, state, hook health |
+| `--resume` | `resume` (or `detect-scope` if no session) | welcome-back summary + choice menu |
+| `--scope <name>` | `print` → `report --scope …` | pin (fresh) or change (mid-flight; re-inits and resets progress) |
+| `--depth <level>` | `print` → `report --depth …` | override depth on the active session |
+| `--stage <slug>` / `--phase <name>` | `print` → `report --jump <slug>` | move the pointer; refused into execution until the plan is approved |
+
 `report` mutates `qa-state.md` + audit: `--scope` (init), `--stage <slug>`
 (`--status` | `--approved --feature-count N` for the gate | `--file` / `--done`
-for the foreach stage).
+for the foreach stage), `--depth <level>` (depth config change), and
+`--jump <slug>` (recompute `completed[]` so `<slug>` runs next; a backward jump
+into discovery re-opens the plan gate).
 
 ## Plan-gate invariant
 

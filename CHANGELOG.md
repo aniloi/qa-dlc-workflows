@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`/qadlc` flag surface** — the conductor forwards everything after `/qadlc` to
+  the engine's `next` unchanged: `--resume` (resume with a choice menu),
+  `--scope <name>` / `--depth <level>` (set or, mid-flight, change scope and
+  coverage depth), `--stage <slug>` / `--phase <name>` (jump the stage pointer —
+  refused into the execution phase until the plan is approved), `--doctor` (setup
+  check), and `--version`. `next` stays read-only: a state-changing flag resolves
+  to a `print` directive naming the exact `report` command to run.
+- **Engine** — new `print` and `resume` directive types; `report` gains
+  `--depth <level>` (depth config change) and `--jump <slug>` (recompute
+  `completed[]` so the target runs next). The framework version is baked into
+  `harness.json` so `--version` can report it.
+
+---
+
 ## [v2.0.0] — 2026-07-03
 
 Complete re-architecture. This branch (`v2`) replaces the pure-markdown rule

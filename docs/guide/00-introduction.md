@@ -59,8 +59,22 @@ in `aidlc-docs/.qadlc-sensors/`, they never silently block you.
 
 - Progress lives in `aidlc-docs/qa-state.md` (tool-owned).
 - Every input and event is logged to `aidlc-docs/audit.md`.
-- Interrupted? Just invoke again — the engine resumes from state. See
-  [session continuity](../../core/qa-common/session-continuity.md).
+- Interrupted? Just invoke again, or run `/qadlc --resume` — the engine resumes
+  from state and offers a continue / review / redo / jump / start-fresh choice.
+  See [session continuity](../../core/qa-common/session-continuity.md).
+
+## Flags
+
+Pass flags after `/qadlc`; the conductor forwards them to the engine unchanged:
+
+- `--resume` — resume an in-progress session with a choice menu
+- `--scope <name>` — start, or mid-flight change, the scope (smoke, single-story,
+  regression, bugfix-repro, exploratory)
+- `--depth <level>` — override coverage depth (Minimal, Standard, Comprehensive)
+- `--stage <slug>` / `--phase <name>` — jump the stage pointer (jumps into the
+  execution phase are refused until the plan is approved)
+- `--doctor` — check the setup (bun, compiled data, state, hook health)
+- `--version` — print the framework version
 
 ## Runner commands
 
