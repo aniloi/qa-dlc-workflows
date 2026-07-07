@@ -49,6 +49,14 @@ const ONBOARDING_SKELETON = join(CORE_ROOT, "templates", "onboarding.md");
 const HARNESS_TOKEN = /\{\{HARNESS_DIR\}\}/g;
 const HARNESS_DATA = "tools/data/harness.json";
 
+// The framework version, read once from the repo-root VERSION file and baked
+// into each harness's runtime descriptor (harness.json) so the engine can
+// surface it via `next --version` without shipping the VERSION file itself.
+function readVersion(): string {
+  const p = join(REPO_ROOT, "VERSION");
+  return existsSync(p) ? readFileSync(p, "utf-8").trim() || "0.0.0" : "0.0.0";
+}
+
 // ---------------------------------------------------------------------------
 // Harness discovery: every harness/<name>/ that carries a manifest.ts. Adding a
 // harness is one dir + manifest row, zero edits here.
@@ -158,6 +166,7 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
   const harnessData = {
     harnessDir: m.harnessDir,
     rulesSubdir: m.rulesRename ?? "rules",
+    version: readVersion(),
   };
   emitFile(
     join(harnessDirRoot, HARNESS_DATA),

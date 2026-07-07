@@ -123,17 +123,25 @@ export function projectRootFromTool(toolUrl: string): string {
   return dirname(harnessDirFromTool(toolUrl));
 }
 
-/** Read tools/data/harness.json for this harness (harnessDir, rulesSubdir). */
-export function harnessData(harnessDir: string): { harnessDir: string; rulesSubdir: string } {
+/** The runtime harness descriptor written by scripts/package.ts. */
+export interface HarnessData {
+  harnessDir: string;
+  rulesSubdir: string;
+  /** Framework version, baked from the repo-root VERSION file at package time. */
+  version: string;
+}
+
+/** Read tools/data/harness.json for this harness (harnessDir, rulesSubdir, version). */
+export function harnessData(harnessDir: string): HarnessData {
   const p = join(harnessDir, "tools", "data", "harness.json");
   if (existsSync(p)) {
     try {
-      return JSON.parse(readFileSync(p, "utf-8"));
+      return { version: "0.0.0", ...JSON.parse(readFileSync(p, "utf-8")) };
     } catch {
       /* fall through */
     }
   }
-  return { harnessDir: "", rulesSubdir: "rules" };
+  return { harnessDir: "", rulesSubdir: "rules", version: "0.0.0" };
 }
 
 // The workflow's runtime doc root. Kept as aidlc-docs/ to match QADLC v1

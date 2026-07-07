@@ -1,4 +1,5 @@
 {
   "harnessDir": ".kiro",
-  "rulesSubdir": "steering"
+  "rulesSubdir": "steering",
+  "version": "2.0.0"
 }

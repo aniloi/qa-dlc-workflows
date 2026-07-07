@@ -161,6 +161,123 @@ describe("tag-policy Jira mode", () => {
   });
 });
 
+describe("flag surface (/qadlc forwarded to next)", () => {
+  function fresh(): string {
+    const p = mkdtempSync(join(tmpdir(), "qadlc-flags-"));
+    cpSync(DIST_KIRO, join(p, ".kiro"), { recursive: true });
+    mkdirSync(join(p, "features"), { recursive: true });
+    return p;
+  }
+  const orch = (p: string) => join(p, ".kiro", "tools", "qadlc-orchestrate.ts");
+  function runIn(p: string, args: string[]) {
+    const r = spawnSync("bun", [orch(p), ...args], { encoding: "utf-8", cwd: p });
+    return { out: r.stdout ?? "", err: r.stderr ?? "", code: r.status ?? 0 };
+  }
+  function state(p: string) {
+    const r = spawnSync("bun", [join(p, ".kiro", "tools", "qadlc-state.ts"), "show"], {
+      encoding: "utf-8",
+      cwd: p,
+    });
+    return JSON.parse(r.stdout ?? "{}");
+  }
+
+  test("--version prints the framework version (read-only)", () => {
+    const p = fresh();
+    const d = JSON.parse(runIn(p, ["next", "--version"]).out);
+    expect(d.type).toBe("print");
+    expect(d.readonly).toBe(true);
+    expect(d.message).toContain("2.0.0");
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("--doctor reports a read-only setup check", () => {
+    const p = fresh();
+    const d = JSON.parse(runIn(p, ["next", "--doctor"]).out);
+    expect(d.type).toBe("print");
+    expect(d.readonly).toBe(true);
+    expect(d.message).toContain("doctor");
+    expect(d.message).toContain("stage-graph.json: OK");
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("--resume with no session falls through to detect-scope", () => {
+    const p = fresh();
+    expect(runIn(p, ["next", "--resume"]).out).toContain('"type": "detect-scope"');
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("--scope on a fresh workspace names the init command", () => {
+    const p = fresh();
+    const d = JSON.parse(runIn(p, ["next", "--scope", "smoke"]).out);
+    expect(d.type).toBe("print");
+    expect(d.command).toContain("report --scope smoke");
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("an unknown --scope is a read-only error", () => {
+    const p = fresh();
+    const d = JSON.parse(runIn(p, ["next", "--scope", "bogus"]).out);
+    expect(d.type).toBe("print");
+    expect(d.readonly).toBe(true);
+    expect(d.message).toContain("Unknown scope");
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("--resume on an active session emits a resume menu", () => {
+    const p = fresh();
+    runIn(p, ["report", "--scope", "smoke"]);
+    const d = JSON.parse(runIn(p, ["next", "--resume"]).out);
+    expect(d.type).toBe("resume");
+    expect(d.state_summary.current_stage).toBe("workspace-detection");
+    expect(d.options.length).toBeGreaterThan(1);
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("--depth on an active session names the depth-change command and report applies it", () => {
+    const p = fresh();
+    runIn(p, ["report", "--scope", "smoke"]);
+    const d = JSON.parse(runIn(p, ["next", "--depth", "Comprehensive"]).out);
+    expect(d.type).toBe("print");
+    expect(d.command).toContain("report --depth Comprehensive");
+    runIn(p, ["report", "--depth", "Comprehensive"]);
+    expect(state(p).depth).toBe("Comprehensive");
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("--stage into execution is refused until the plan is approved", () => {
+    const p = fresh();
+    runIn(p, ["report", "--scope", "smoke"]);
+    const d = JSON.parse(runIn(p, ["next", "--stage", "feature-generation"]).out);
+    expect(d.type).toBe("print");
+    expect(d.readonly).toBe(true);
+    expect(d.message).toContain("gated");
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("--stage jump names report --jump, which recomputes the pointer", () => {
+    const p = fresh();
+    runIn(p, ["report", "--scope", "regression"]);
+    const d = JSON.parse(runIn(p, ["next", "--stage", "step-inventory"]).out);
+    expect(d.command).toContain("report --jump step-inventory");
+    runIn(p, ["report", "--jump", "step-inventory"]);
+    const s = state(p);
+    expect(s.current_stage).toBe("step-inventory");
+    // earlier discovery stages are marked complete so step-inventory runs next
+    expect(s.completed).toContain("story-analysis");
+    expect(JSON.parse(runIn(p, ["next"]).out).stage.slug).toBe("step-inventory");
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("an unknown --stage and a --stage/--phase combo are read-only errors", () => {
+    const p = fresh();
+    runIn(p, ["report", "--scope", "smoke"]);
+    expect(JSON.parse(runIn(p, ["next", "--stage", "bogus"]).out).message).toContain("Unknown stage");
+    const combo = JSON.parse(runIn(p, ["next", "--stage", "x", "--phase", "discovery"]).out);
+    expect(combo.message).toContain("together");
+    rmSync(p, { recursive: true, force: true });
+  });
+});
+
 describe("packaging drift guard", () => {
   test("package --check reports no drift", () => {
     const r = spawnSync("bun", [join(REPO, "scripts", "package.ts"), "--check"], { encoding: "utf-8", cwd: REPO });

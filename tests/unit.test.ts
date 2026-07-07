@@ -9,6 +9,7 @@ import { parseSensorManifest, validateSensorManifest } from "../core/tools/qadlc
 import { parseFeature, realScenarios } from "../core/tools/qadlc-gherkin.ts";
 import { compileGraph } from "../core/tools/qadlc-graph.ts";
 import { scalarField, listField } from "../core/tools/qadlc-lib.ts";
+import { parseNextFlags } from "../core/tools/qadlc-orchestrate.ts";
 
 const CORE = join(import.meta.dir, "..", "core");
 
@@ -98,6 +99,31 @@ Feature: Login
     expect(rs[0].tags).toEqual(["@smoke"]);
     expect(rs[0].steps.length).toBe(3);
     expect(rs[1].examplesRows).toBe(2);
+  });
+});
+
+describe("next flag parsing", () => {
+  test("parses boolean flags", () => {
+    expect(parseNextFlags(["--version"])).toEqual({ version: true });
+    expect(parseNextFlags(["--doctor"])).toEqual({ doctor: true });
+    expect(parseNextFlags(["--resume"])).toEqual({ resume: true });
+  });
+  test("valued flags consume the next token", () => {
+    expect(parseNextFlags(["--scope", "smoke"])).toEqual({ scope: "smoke" });
+    expect(parseNextFlags(["--depth", "Standard"])).toEqual({ depth: "Standard" });
+    expect(parseNextFlags(["--stage", "story-analysis"])).toEqual({ stage: "story-analysis" });
+    expect(parseNextFlags(["--phase", "execution"])).toEqual({ phase: "execution" });
+  });
+  test("combines flags and ignores freeform / unknown tokens", () => {
+    expect(parseNextFlags(["--scope", "smoke", "--depth", "Comprehensive"])).toEqual({
+      scope: "smoke",
+      depth: "Comprehensive",
+    });
+    expect(parseNextFlags(["write", "features", "for", "CLM-123"])).toEqual({});
+    expect(parseNextFlags(["--stage", "x", "--phase", "y"])).toEqual({ stage: "x", phase: "y" });
+  });
+  test("a valued flag with no following token is dropped", () => {
+    expect(parseNextFlags(["--scope"])).toEqual({});
   });
 });
 

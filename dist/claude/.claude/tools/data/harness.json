@@ -1,4 +1,5 @@
 {
   "harnessDir": ".claude",
-  "rulesSubdir": "rules"
+  "rulesSubdir": "rules",
+  "version": "2.0.0"
 }
