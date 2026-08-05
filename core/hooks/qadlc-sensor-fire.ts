@@ -31,6 +31,12 @@ try {
   process.exit(0);
 }
 
+// No active v2 session, no sensors. Read state BEFORE routing: gherkin_plan.md
+// is a filename QADLC v1 also produces, so routing first would fire the
+// dispatcher on a v1 project and append v2 sensor events to v1's audit trail.
+const state = readState(projectDir);
+if (!state || !state.scope) process.exit(0);
+
 const file = (parsed.tool_input?.file_path ?? "").replace(/\\/g, "/");
 const base = file.split("/").pop() ?? "";
 
@@ -42,8 +48,7 @@ let stage: string;
 if (base === "gherkin_plan.md") {
   stage = "gherkin-plan";
 } else if (file.endsWith(".feature")) {
-  const state = readState(projectDir);
-  stage = state && state.completed.includes("feature-generation") ? "cross-feature-check" : "feature-generation";
+  stage = state.completed.includes("feature-generation") ? "cross-feature-check" : "feature-generation";
 } else {
   process.exit(0);
 }

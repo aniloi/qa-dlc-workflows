@@ -24,6 +24,7 @@ import {
   resolveProjectDirFromHook,
   type ClaudeCodeHookInput,
 } from "../tools/qadlc-lib.ts";
+import { readState } from "../tools/qadlc-state.ts";
 
 const projectDir = resolveProjectDirFromHook(import.meta.url);
 
@@ -62,7 +63,13 @@ if (!isArtifact) process.exit(0);
 // Never log writes to the audit file itself (avoid recursion).
 if (file.endsWith("/audit.md")) process.exit(0);
 
-// Only log when a session is active (audit file exists).
+// Only log when a v2 session is active. The audit file existing is not enough:
+// QADLC v1 owns aidlc-docs/audit.md too and writes it in a different format, so
+// a v1 project satisfies the file check and would have v2 blocks appended into
+// its v1 trail. readState() returns null without the machine marker, which is
+// what distinguishes the two.
+const state = readState(projectDir);
+if (!state || !state.scope) process.exit(0);
 if (!existsSync(auditPath(projectDir))) process.exit(0);
 ensureAudit(projectDir);
 
