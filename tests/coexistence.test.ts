@@ -101,6 +101,33 @@ function writeEvent(p: string, rel: string, toolName = "Write") {
   return { tool_name: toolName, tool_input: { file_path: join(p, rel) } };
 }
 
+/**
+ * The environment a tool sees when the MODEL runs it through the Bash tool:
+ * $CLAUDE_PROJECT_DIR is not exported there, which is the whole reason the
+ * resolver needs a cwd walk-up.
+ */
+function withoutProjectEnv(): Record<string, string | undefined> {
+  const env = { ...process.env };
+  delete env.CLAUDE_PROJECT_DIR;
+  delete env.KIRO_PROJECT_DIR;
+  delete env.QADLC_PROJECT_ROOT;
+  return env;
+}
+
+/** Sorted relative paths of every file under a directory. */
+function treeSnapshot(dir: string): string[] {
+  const out: string[] = [];
+  const walk = (d: string, prefix: string): void => {
+    for (const e of readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const rel = prefix ? `${prefix}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(join(d, e.name), rel);
+      else out.push(rel);
+    }
+  };
+  walk(dir, "");
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // 1. v1 coexistence — these properties must hold
 // ---------------------------------------------------------------------------
@@ -191,14 +218,28 @@ describe("path inventory: where runtime artifacts land today", () => {
     expect(readdirSync(dir).length).toBeGreaterThan(0);
   });
 
-  test("hook health writes INSIDE the install tree (the §1 violation Phase 1 fixes)", () => {
-    // This is the one place the engine writes to its own install directory. A
-    // plugin cache is shared across projects and replaced on upgrade, so this
-    // location is invalid for a plugin. Pinned here so the move is visible.
+  // Phase 1 moved this. It used to write <engineRoot>/tools/data/health/ — the one
+  // place the engine wrote into its own install tree, which is invalid for a
+  // plugin whose cache is shared across projects and replaced on upgrade.
+  test("hook health writes to the project, never into the install tree", () => {
     const p = v2Project();
     writeFileSync(join(p, "features", "x.feature"), FEATURE, "utf-8");
     runHook(p, "qadlc-audit-logger.ts", writeEvent(p, "features/x.feature"));
-    expect(existsSync(join(tree(p), "tools", "data", "health", "audit-logger.last"))).toBe(true);
+    expect(existsSync(join(p, ".qadlc", "health", "audit-logger.last"))).toBe(true);
+    expect(existsSync(join(tree(p), "tools", "data", "health"))).toBe(false);
+  });
+
+  test("the install tree is untouched by a full session", () => {
+    // The §1 invariant, asserted directly: compare the engine tree's file list
+    // before and after real work. Any write into it fails here.
+    const p = v2Project();
+    const before = treeSnapshot(tree(p));
+    writeFileSync(join(p, "features", "x.feature"), FEATURE, "utf-8");
+    runHook(p, "qadlc-audit-logger.ts", writeEvent(p, "features/x.feature"));
+    runHook(p, "qadlc-sensor-fire.ts", writeEvent(p, "features/x.feature"));
+    runHook(p, "qadlc-stop.ts", {});
+    runHook(p, "qadlc-session-end.ts", { hook_event_name: "SessionEnd" });
+    expect(treeSnapshot(tree(p))).toEqual(before);
   });
 });
 
@@ -219,8 +260,85 @@ describe("project-root resolution", () => {
     expect(readFileSync(join(host, "aidlc-docs", "audit.md"), "utf-8")).toBe(V1_AUDIT);
   });
 
-  // Phase 1: tools are invoked by the model via Bash, where $CLAUDE_PROJECT_DIR
-  // is NOT exported, so they must walk up from cwd (.qadlc/ before .git/).
-  test.skip("PHASE 1: tools resolve the project root by walking up from cwd", () => {});
-  test.skip("PHASE 1: resolution refuses to return a path inside the plugin cache", () => {});
+  test("$QADLC_PROJECT_ROOT overrides everything, for tools as well as hooks", () => {
+    const host = v2Project();
+    const target = v2Project();
+    const r = spawnSync("bun", [tool(host, "qadlc-state.ts"), "show"], {
+      cwd: host,
+      encoding: "utf-8",
+      env: { ...process.env, QADLC_PROJECT_ROOT: target },
+    });
+    // Reads target's state, not host's — both are live, so a wrong resolution
+    // would still return a valid-looking object. Distinguish by started time.
+    const viaEnv = JSON.parse(r.stdout ?? "{}");
+    const targetState = JSON.parse(
+      readFileSync(join(target, "aidlc-docs", "qa-state.md"), "utf-8").split("<!-- qa-state:machine")[1].split("-->")[0],
+    );
+    expect(viaEnv.started).toBe(targetState.started);
+  });
+
+  // Plugin mode: the engine tree lives outside the project, so the resolver must
+  // walk up from cwd. Simulated by flipping harness.json's mode and running from
+  // a subdirectory — the case bare cwd would get wrong.
+  describe("plugin mode", () => {
+    function pluginProject(): { proj: string; engine: string } {
+      const engine = mkdtempSync(join(tmpdir(), "qadlc-engine-"));
+      cpSync(DIST_CLAUDE, engine, { recursive: true });
+      const hj = join(engine, "tools", "data", "harness.json");
+      const data = JSON.parse(readFileSync(hj, "utf-8"));
+      writeFileSync(hj, JSON.stringify({ ...data, mode: "plugin", entryCmd: "qadlc" }, null, 2), "utf-8");
+      const proj = mkdtempSync(join(tmpdir(), "qadlc-proj-"));
+      mkdirSync(join(proj, ".git"), { recursive: true });
+      mkdirSync(join(proj, "src", "deep"), { recursive: true });
+      return { proj, engine };
+    }
+
+    test("tools walk up from cwd to find the project root", () => {
+      const { proj, engine } = pluginProject();
+      // cwd is two levels down, exactly where bare cwd would misresolve.
+      const r = spawnSync("bun", [join(engine, "tools", "qadlc-orchestrate.ts"), "report", "--scope", "smoke"], {
+        cwd: join(proj, "src", "deep"),
+        encoding: "utf-8",
+        env: withoutProjectEnv(),
+      });
+      expect(r.status).toBe(0);
+      expect(existsSync(join(proj, "aidlc-docs", "qa-state.md"))).toBe(true);
+      expect(existsSync(join(proj, "src", "deep", "aidlc-docs"))).toBe(false);
+    });
+
+    test("an initialized .qadlc/ outranks an enclosing .git/", () => {
+      const { proj, engine } = pluginProject();
+      const inner = join(proj, "src", "deep");
+      mkdirSync(join(inner, ".qadlc"), { recursive: true });
+      spawnSync("bun", [join(engine, "tools", "qadlc-orchestrate.ts"), "report", "--scope", "smoke"], {
+        cwd: inner,
+        env: withoutProjectEnv(),
+      });
+      expect(existsSync(join(inner, "aidlc-docs", "qa-state.md"))).toBe(true);
+      expect(existsSync(join(proj, "aidlc-docs"))).toBe(false);
+    });
+
+    test("resolution refuses a project root inside the engine tree", () => {
+      const { engine } = pluginProject();
+      const r = spawnSync("bun", [join(engine, "tools", "qadlc-orchestrate.ts"), "next"], {
+        cwd: join(engine, "tools"),
+        encoding: "utf-8",
+        env: withoutProjectEnv(),
+      });
+      expect(r.status).not.toBe(0);
+      expect(r.stderr ?? "").toContain("could not determine your project root");
+    });
+
+    test("a hook is a silent no-op when the project root is unusable", () => {
+      const { engine } = pluginProject();
+      const r = spawnSync("bun", [join(engine, "hooks", "qadlc-stop.ts")], {
+        cwd: join(engine, "tools"),
+        encoding: "utf-8",
+        input: "{}",
+        env: withoutProjectEnv(),
+      });
+      expect(r.status).toBe(0);
+      expect(r.stdout ?? "").toBe("");
+    });
+  });
 });

@@ -167,6 +167,8 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
     harnessDir: m.harnessDir,
     rulesSubdir: m.rulesRename ?? "rules",
     version: readVersion(),
+    mode: m.mode ?? "vendored",
+    entryCmd: m.entryCmd ?? `bun ${m.harnessDir}/tools/qadlc-orchestrate.ts`,
   };
   emitFile(
     join(harnessDirRoot, HARNESS_DATA),

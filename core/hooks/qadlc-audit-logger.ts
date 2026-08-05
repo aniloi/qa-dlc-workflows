@@ -15,27 +15,18 @@ import {
   auditPath,
   docsRoot,
   errorMessage,
-  harnessDirFromTool,
+  engineRootFromTool,
   hooksHealthDir,
   isClaudeCodeHookInput,
   isoTimestamp,
   planPath,
   recordHookDrop,
-  resolveProjectDirFromHook,
+  resolveProjectRootOrExit,
   type ClaudeCodeHookInput,
 } from "../tools/qadlc-lib.ts";
 import { readState } from "../tools/qadlc-state.ts";
 
-const projectDir = resolveProjectDirFromHook(import.meta.url);
-
-// Health heartbeat.
-try {
-  const healthDir = hooksHealthDir(harnessDirFromTool(import.meta.url));
-  mkdirSync(healthDir, { recursive: true });
-  writeFileSync(join(healthDir, "audit-logger.last"), isoTimestamp(), "utf-8");
-} catch {
-  /* best-effort */
-}
+const projectDir = resolveProjectRootOrExit(import.meta.url);
 
 if (process.stdin.isTTY) process.exit(0);
 
@@ -72,6 +63,19 @@ const state = readState(projectDir);
 if (!state || !state.scope) process.exit(0);
 if (!existsSync(auditPath(projectDir))) process.exit(0);
 ensureAudit(projectDir);
+
+// Health heartbeat. Deliberately AFTER every no-op check: the health dir now
+// lives in the project (.qadlc/health/), so writing it first would create a
+// .qadlc/ directory in repos that have no QADLC session at all — including
+// every v1 project the user opens with the plugin installed. It also means an
+// unrelated file edit no longer costs a bun boot plus a write.
+try {
+  const healthDir = hooksHealthDir(projectDir);
+  mkdirSync(healthDir, { recursive: true });
+  writeFileSync(join(healthDir, "audit-logger.last"), isoTimestamp(), "utf-8");
+} catch {
+  /* best-effort */
+}
 
 // CREATE vs UPDATE: Edit is always UPDATE; Write is CREATE if the file is
 // net-new (mtime ≈ birthtime), else UPDATE.

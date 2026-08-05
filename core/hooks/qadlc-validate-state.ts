@@ -1,20 +1,20 @@
 #!/usr/bin/env bun
 // qadlc-validate-state.ts — a state integrity check. Runnable by hand
-// (bun {{HARNESS_DIR}}/hooks/qadlc-validate-state.ts) or wired as a hook. Reports
+// (see the engine's entryCmd in tools/data/harness.json) or wired as a hook. Reports
 // inconsistencies between qa-state.md and the compiled graph without mutating
 // anything. Exit 0 = valid, 1 = problems found.
 
 import { join } from "node:path";
 import {
-  harnessDirFromTool,
+  engineRootFromTool,
   loadJson,
-  projectRootFromTool,
+  resolveProjectRoot,
 } from "../tools/qadlc-lib.ts";
 import { readState } from "../tools/qadlc-state.ts";
 import type { ScopeGrid } from "../tools/qadlc-graph.ts";
 
-const projectDir = projectRootFromTool(import.meta.url);
-const harness = harnessDirFromTool(import.meta.url);
+const projectDir = resolveProjectRoot(import.meta.url);
+const engineRoot = engineRootFromTool(import.meta.url);
 
 const problems: string[] = [];
 const state = readState(projectDir);
@@ -25,7 +25,7 @@ if (!state) {
 }
 
 try {
-  const grid = loadJson<ScopeGrid>(join(harness, "tools", "data", "scope-grid.json"));
+  const grid = loadJson<ScopeGrid>(join(engineRoot, "tools", "data", "scope-grid.json"));
   const scope = grid.scopes[state.scope];
   if (!scope) {
     problems.push(`scope "${state.scope}" is not in the compiled scope grid`);

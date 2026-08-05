@@ -14,7 +14,7 @@ import {
   auditPath,
   docsRoot,
   isoTimestamp,
-  projectRootFromTool,
+  resolveProjectRoot,
 } from "./qadlc-lib.ts";
 
 const HEADER = "# QADLC Audit Trail\n\n> Append-only. Every user input is captured verbatim; every engine/hook\n> event is timestamped. Never edit prior entries.\n\n";
@@ -42,7 +42,7 @@ export function appendAuditEntry(
 function main(): void {
   const args = process.argv.slice(2);
   const cmd = args[0];
-  const projectRoot = projectRootFromTool(import.meta.url);
+  const projectRoot = resolveProjectRoot(import.meta.url);
 
   if (cmd === "init") {
     ensureAudit(projectRoot);

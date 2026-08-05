@@ -138,14 +138,17 @@ no longer any reason for hooks and tools to resolve the project differently.
 
 ### 4.3 `resolveProjectRoot()`
 
+As implemented:
+
 ```
-1. $QADLC_PROJECT_ROOT            — explicit override (tests, CI, --project-root)
+1. $QADLC_PROJECT_ROOT            — explicit override (tests, CI, scripts)
 2. $CLAUDE_PROJECT_DIR / $KIRO_PROJECT_DIR
                                   — set for hook processes
-3. walk up from cwd, first match wins:
+3. vendored mode ONLY: dirname(ENGINE_ROOT)
+4. walk up from cwd, whole ancestry per marker, in order:
      a. a directory containing .qadlc/     (initialized QADLC project)
      b. a directory containing .git/       (repo root)
-4. cwd
+5. cwd
 ```
 
 Step 2 alone is not enough. Tools like `qadlc next` are run by the **model via
@@ -153,6 +156,20 @@ Bash**, where `$CLAUDE_PROJECT_DIR` is not exported. Relying on bare cwd would
 write state to the wrong place the moment the model `cd`s into a subdirectory —
 a silent, data-losing failure. The walk-up is what makes Bash-invoked tools as
 reliable as hooks.
+
+**Step 3 is a refinement the implementation forced, and it is load-bearing.** The
+original four-step ladder sent vendored installs through the walk-up too, which
+would have changed their behavior: a vendored project that happens to sit inside
+a larger git repo would resolve to the outer repo rather than to the directory
+holding its own `.claude/`. Ranking parent-of-engine above the walk-up in
+vendored mode keeps `dist/claude` and `dist/kiro` bit-identical in behavior —
+Phase 1 then provably changes nothing for existing users, which is what makes it
+safe to land ahead of the plugin target. Plugin mode skips step 3 entirely, so it
+gets the walk-up it needs.
+
+The `.qadlc/`-before-`.git/` ordering scans the **whole ancestry for each marker**
+rather than checking both at each level. An initialized QADLC project therefore
+wins over any enclosing repo, however far up the `.git/` sits.
 
 **Guardrail.** After resolving, hard-fail if the result is inside a plugin cache
 (`~/.claude/plugins/cache`) or equals `ENGINE_ROOT`:
@@ -164,6 +181,12 @@ install directory. Run from inside your project, or set QADLC_PROJECT_ROOT.
 
 Cheap, and it makes the exact class of bug being fixed here impossible to
 reintroduce silently.
+
+Tools raise this; hooks must not. `resolveProjectRootOrExit()` wraps the same
+resolver and `exit(0)`s instead, because a hook that cannot locate the project
+has to be a silent no-op — raising there would surface a QADLC error in an
+unrelated repo, and for the `Stop` hook a nonzero exit is close to the blocking
+path we must not touch by accident.
 
 ### 4.4 Mode flag
 
@@ -637,7 +660,7 @@ green (`bun scripts/package.ts --check`).
 | Phase | Work | Exit criterion |
 |---|---|---|
 | **0. Guards** ✅ | `tests/coexistence.test.ts`: v1-safety property (§8.1), a path inventory of today's artifact locations, `$CLAUDE_PROJECT_DIR` precedence. Fixed the two missing hook guards the tests exposed | **Done.** `bun run check` green: typecheck, no drift, 47 pass / 3 skip |
-| **1. Path resolution** | §4 in full: three roots, delete `projectRootFromTool`, `resolveProjectRoot()` + guardrail, `mode`/`entryCmd` in `harness.json`, `hooksHealthDir` → project | `--check` clean; existing tests green; no target-specific behavior yet |
+| **1. Path resolution** ✅ | §4 in full: three roots, `projectRootFromTool` and `resolveProjectDirFromHook` deleted, `resolveProjectRoot()` + `…OrExit()` + guardrail, `mode`/`entryCmd` in `harness.json`, `orchestrateCmd()` reads `entryCmd`, `hooksHealthDir` → `.qadlc/health/`, heartbeat moved after the guards, `hookHarnessDirName` deleted | **Done.** `bun run check` green: no drift, 53 pass / 1 skip. Vendored `orchestrateCmd` output byte-identical; `--doctor` now reports mode + both roots |
 | **2. Namespacing** | §8.1 `.qadlc/` move, refuse-not-clobber guard, `.gitignore`, `qadlc migrate` | Migration tested against a fixture of both v1 and v2 `aidlc-docs/` |
 | **3. Plugin target** | §7: `harness/plugin/`, `emit()`, `bin/qadlc`, `hooks/hooks.json`, exec bit + mode checking in `--check` | `claude plugin validate ./dist/plugin --strict` passes; **plan-gate test (§7.3) passes against a plugin install** |
 | **4. Docs/token** | §6: `{{QADLC_CMD}}`, `{{PROJECT_MEMORY_DIR}}`, engine paths out of prose, `SKILL.md` absorbs `rules-qadlc.md`, fix the `.ts` token | Packager asserts no surviving `{{HARNESS_DIR}}` in the plugin target; `core/` prose byte-identical across targets |

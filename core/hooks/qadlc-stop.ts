@@ -18,12 +18,12 @@ import {
   errorMessage,
   planPath,
   recordHookDrop,
-  resolveProjectDirFromHook,
+  resolveProjectRootOrExit,
 } from "../tools/qadlc-lib.ts";
 import { appendAuditEntry } from "../tools/qadlc-audit.ts";
 import { readState } from "../tools/qadlc-state.ts";
 
-const projectDir = resolveProjectDirFromHook(import.meta.url);
+const projectDir = resolveProjectRootOrExit(import.meta.url);
 
 function block(reason: string): never {
   process.stdout.write(`${JSON.stringify({ decision: "block", reason })}\n`);

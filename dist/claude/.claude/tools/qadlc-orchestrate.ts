@@ -18,10 +18,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   harnessData,
-  harnessDirFromTool,
+  engineRootFromTool,
   hooksHealthDir,
   loadJson,
-  projectRootFromTool,
+  resolveProjectRoot,
 } from "./qadlc-lib.ts";
 import type { StageGraph, ScopeGrid } from "./qadlc-graph.ts";
 import type { StageDefinition } from "./qadlc-stage-schema.ts";
@@ -74,9 +74,9 @@ interface Directive {
   };
 }
 
-const HARNESS_ROOT = harnessDirFromTool(import.meta.url);
-const PROJECT_ROOT = projectRootFromTool(import.meta.url);
-const DATA_DIR = join(HARNESS_ROOT, "tools", "data");
+const ENGINE_ROOT = engineRootFromTool(import.meta.url);
+const PROJECT_ROOT = resolveProjectRoot(import.meta.url);
+const DATA_DIR = join(ENGINE_ROOT, "tools", "data");
 
 function loadGraph(): StageGraph {
   return loadJson<StageGraph>(join(DATA_DIR, "stage-graph.json"));
@@ -89,16 +89,16 @@ function stageBySlug(graph: StageGraph, slug: string): StageDefinition | undefin
 }
 
 function readPersona(): string {
-  const hd = harnessData(HARNESS_ROOT).harnessDir || ".claude";
+  const hd = harnessData(ENGINE_ROOT).harnessDir || ".claude";
   try {
-    return readFileSync(join(HARNESS_ROOT, "qa-common", "conductor.md"), "utf-8");
+    return readFileSync(join(ENGINE_ROOT, "qa-common", "conductor.md"), "utf-8");
   } catch {
     return `See ${hd}/qa-common/conductor.md`;
   }
 }
 
 function stageFilePath(s: StageDefinition): string {
-  const hd = harnessData(HARNESS_ROOT).harnessDir || ".claude";
+  const hd = harnessData(ENGINE_ROOT).harnessDir || ".claude";
   return `${hd}/qa-common/stages/${s.phase}/${s.slug}.md`;
 }
 
@@ -140,10 +140,20 @@ export function parseNextFlags(args: string[]): NextFlags {
   return flags;
 }
 
-/** Build the exact command string the conductor should run next. */
+/**
+ * Build the exact command string the conductor should run next.
+ *
+ * The command is read from harness.json rather than composed from the harness dir
+ * name, because a plugin install has no project-relative path to the engine: the
+ * tree lives in a shared cache whose location changes on every upgrade, and
+ * ${CLAUDE_PLUGIN_ROOT} is not exported to the Bash tool the conductor runs this
+ * in. A plugin target sets entryCmd to a bare `qadlc` (a bin/ executable on the
+ * Bash tool's PATH); vendored targets set the project-relative bun invocation.
+ */
 function orchestrateCmd(sub: string): string {
-  const hd = harnessData(HARNESS_ROOT).harnessDir || ".claude";
-  return `bun ${hd}/tools/qadlc-orchestrate.ts ${sub}`;
+  const hd = harnessData(ENGINE_ROOT);
+  const entry = hd.entryCmd || `bun ${hd.harnessDir || ".claude"}/tools/qadlc-orchestrate.ts`;
+  return `${entry} ${sub}`;
 }
 
 /** A read-only print directive (version/doctor/errors) — no follow-up command. */
@@ -172,7 +182,7 @@ function next(args: string[] = []): Directive {
 
   // Read-only utility flags run before we touch the data plane or state, so they
   // work even on a broken or brand-new workspace.
-  if (flags.version) return printReadonly(`QADLC ${harnessData(HARNESS_ROOT).version}`);
+  if (flags.version) return printReadonly(`QADLC ${harnessData(ENGINE_ROOT).version}`);
   if (flags.doctor) return doctorDirective();
 
   const graph = loadGraph();
@@ -438,10 +448,12 @@ function handleFlags(
 // doctorDirective — a read-only environment/setup check. Never throws: each probe
 // degrades to a reported problem so `--doctor` works on a broken workspace.
 function doctorDirective(): Directive {
-  const hd = harnessData(HARNESS_ROOT);
+  const hd = harnessData(ENGINE_ROOT);
   const lines: string[] = ["QADLC doctor — environment & setup check", ""];
   lines.push(`- bun: ${process.versions.bun ? `v${process.versions.bun}` : "NOT DETECTED (required)"}`);
-  lines.push(`- harness dir: ${hd.harnessDir || "(unknown)"}`);
+  lines.push(`- install mode: ${hd.mode}`);
+  lines.push(`- engine root: ${ENGINE_ROOT}`);
+  lines.push(`- project root: ${PROJECT_ROOT}`);
   lines.push(`- version: ${hd.version}`);
   for (const [label, file] of [
     ["stage-graph", join(DATA_DIR, "stage-graph.json")],
@@ -465,7 +477,7 @@ function doctorDirective(): Directive {
     lines.push("- session state: UNREADABLE");
   }
   try {
-    const dropLog = join(hooksHealthDir(HARNESS_ROOT), "hook-drops.log");
+    const dropLog = join(hooksHealthDir(PROJECT_ROOT), "hook-drops.log");
     if (existsSync(dropLog)) {
       const n = readFileSync(dropLog, "utf-8").split("\n").filter((l) => l.trim()).length;
       lines.push(`- hook health: ${n} recorded drop(s) — see ${dropLog}`);

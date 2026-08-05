@@ -13,7 +13,7 @@ import {
   readFileSync,
   statSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ---------------------------------------------------------------------------
@@ -106,21 +106,37 @@ export function isoTimestamp(d: Date = new Date()): string {
 }
 
 // ---------------------------------------------------------------------------
-// Harness + path resolution
+// The three roots
 // ---------------------------------------------------------------------------
+// ENGINE_ROOT   the install tree the code is running from (…/.claude, …/.kiro,
+//               or a plugin directory under ~/.claude/plugins/cache/).
+// PROJECT_ROOT  the user's repository. NEVER derived from the engine's location
+//               in plugin mode — a plugin's parent directory is the cache, not
+//               a project.
+// STATE_ROOT    <PROJECT_ROOT>/.qadlc — every mutable artefact.
+//
+// THE INVARIANT: the install tree is READ-ONLY. A plugin cache is shared across
+// every project and replaced on upgrade (old version dirs are deleted ~14 days
+// later), so anything written there is both leaky and ephemeral.
 
 /**
- * Resolve the harness directory root (…/.claude, …/.kiro) that a tool is
- * running from. Tools live at <harnessDir>/tools/<tool>.ts, so the harness dir
- * is two levels up from the tool file.
+ * Resolve the engine root that a tool or hook is running from. Tools live at
+ * <engineRoot>/tools/<tool>.ts and hooks at <engineRoot>/hooks/<hook>.ts, so the
+ * engine root is two levels up either way. Identical under a vendored install
+ * and a plugin install — only what it points AT changes.
  */
-export function harnessDirFromTool(toolUrl: string): string {
+export function engineRootFromTool(toolUrl: string): string {
   return dirname(dirname(fileURLToPath(toolUrl)));
 }
 
-/** The project root (parent of the harness dir). */
-export function projectRootFromTool(toolUrl: string): string {
-  return dirname(harnessDirFromTool(toolUrl));
+/** @deprecated Renamed to engineRootFromTool. Kept for one release. */
+export const harnessDirFromTool = engineRootFromTool;
+
+/** The mutable-state root. Everything QADLC writes lives under here. */
+export const STATE_DIR = ".qadlc";
+
+export function stateRoot(projectRoot: string): string {
+  return join(projectRoot, STATE_DIR);
 }
 
 /** The runtime harness descriptor written by scripts/package.ts. */
@@ -129,19 +145,130 @@ export interface HarnessData {
   rulesSubdir: string;
   /** Framework version, baked from the repo-root VERSION file at package time. */
   version: string;
+  /**
+   * "vendored" — the engine tree lives inside the project (.claude/, .kiro/).
+   * "plugin"   — the engine tree is a shared, read-only plugin install.
+   * Gates exactly one thing: whether the project root may be derived from the
+   * engine's own location.
+   */
+  mode: "vendored" | "plugin";
+  /** The command string the engine tells the conductor to run. */
+  entryCmd: string;
 }
 
-/** Read tools/data/harness.json for this harness (harnessDir, rulesSubdir, version). */
-export function harnessData(harnessDir: string): HarnessData {
-  const p = join(harnessDir, "tools", "data", "harness.json");
+/** Read tools/data/harness.json for this engine tree. */
+export function harnessData(engineRoot: string): HarnessData {
+  const p = join(engineRoot, "tools", "data", "harness.json");
   if (existsSync(p)) {
     try {
-      return { version: "0.0.0", ...JSON.parse(readFileSync(p, "utf-8")) };
+      return {
+        version: "0.0.0",
+        mode: "vendored",
+        entryCmd: "",
+        ...JSON.parse(readFileSync(p, "utf-8")),
+      };
     } catch {
       /* fall through */
     }
   }
-  return { harnessDir: "", rulesSubdir: "rules", version: "0.0.0" };
+  return {
+    harnessDir: "",
+    rulesSubdir: "rules",
+    version: "0.0.0",
+    mode: "vendored",
+    entryCmd: "",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Project-root resolution
+// ---------------------------------------------------------------------------
+
+/** Marketplace plugins are copied here; nothing under it is ever a project. */
+const PLUGIN_CACHE = "/.claude/plugins/cache/";
+
+/**
+ * Resolve the project root for a tool or a hook. One function for both: there is
+ * no reason they should disagree, and the old split (projectRootFromTool for
+ * tools, an env-first path for hooks) is exactly what broke under a plugin.
+ *
+ * Ladder, first hit wins:
+ *   1. $QADLC_PROJECT_ROOT              explicit override (tests, CI, scripts)
+ *   2. $CLAUDE_PROJECT_DIR / $KIRO_PROJECT_DIR
+ *                                       set for hook processes
+ *   3. vendored mode only: the engine's parent directory
+ *   4. walk up from cwd for .qadlc/, then for .git/
+ *   5. cwd
+ *
+ * Step 4 is what makes plugin mode work. Tools are invoked by the model through
+ * the Bash tool, where $CLAUDE_PROJECT_DIR is NOT exported, so bare cwd would
+ * silently write state to the wrong place the moment the model cd's into a
+ * subdirectory. .qadlc/ is checked across the whole ancestry before .git/ so an
+ * initialized QADLC project always beats an enclosing repo.
+ *
+ * Throws when the result cannot be a project (see assertUsableProjectRoot).
+ */
+export function resolveProjectRoot(toolUrl: string): string {
+  const engineRoot = engineRootFromTool(toolUrl);
+  const candidate = projectRootCandidate(engineRoot);
+  assertUsableProjectRoot(candidate, engineRoot);
+  return candidate;
+}
+
+/**
+ * resolveProjectRoot for hooks: a hook must never fail loudly on its own
+ * inability to locate the project, so an unusable root is a silent no-op.
+ */
+export function resolveProjectRootOrExit(toolUrl: string): string {
+  try {
+    return resolveProjectRoot(toolUrl);
+  } catch {
+    process.exit(0);
+  }
+}
+
+function projectRootCandidate(engineRoot: string): string {
+  const explicit = process.env.QADLC_PROJECT_ROOT;
+  if (explicit && explicit.length > 0) return resolve(explicit);
+
+  const env = process.env.CLAUDE_PROJECT_DIR || process.env.KIRO_PROJECT_DIR;
+  if (env && env.length > 0) return resolve(env);
+
+  if (harnessData(engineRoot).mode !== "plugin") return dirname(engineRoot);
+
+  return walkUpForProject(process.cwd());
+}
+
+function walkUpForProject(start: string): string {
+  for (const marker of [STATE_DIR, ".git"]) {
+    let dir = resolve(start);
+    for (;;) {
+      if (existsSync(join(dir, marker))) return dir;
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+  }
+  return resolve(start);
+}
+
+/**
+ * Reject a "project root" that is really the install tree. This is the guardrail
+ * against the exact class of bug this resolver exists to fix: cheap, and it makes
+ * a silent regression impossible.
+ */
+export function assertUsableProjectRoot(projectRoot: string, engineRoot: string): void {
+  const r = resolve(projectRoot);
+  const e = resolve(engineRoot);
+  const posix = `${r.replace(/\\/g, "/")}/`;
+  const inEngine = r === e || r.startsWith(`${e}${sep}`);
+  if (inEngine || posix.includes(PLUGIN_CACHE)) {
+    throw new Error(
+      "QADLC could not determine your project root; it resolved to the engine " +
+        `install directory (${r}). Run from inside your project, or set ` +
+        "QADLC_PROJECT_ROOT.",
+    );
+  }
 }
 
 // The workflow's runtime doc root. Kept as aidlc-docs/ to match QADLC v1
@@ -164,9 +291,14 @@ export function planPath(projectRoot: string): string {
 export function sensorsDir(projectRoot: string, stageSlug: string): string {
   return join(docsRoot(projectRoot), ".qadlc-sensors", stageSlug);
 }
-/** Hook health-heartbeat dir. */
-export function hooksHealthDir(harnessDir: string): string {
-  return join(harnessDir, "tools", "data", "health");
+/**
+ * Hook health-heartbeat dir. Takes the PROJECT root, not the engine root: this
+ * used to write to <engineRoot>/tools/data/health/, the one place the engine
+ * wrote into its own install tree. Under a plugin that tree is shared across
+ * projects and replaced on upgrade.
+ */
+export function hooksHealthDir(projectRoot: string): string {
+  return join(stateRoot(projectRoot), "health");
 }
 
 // ---------------------------------------------------------------------------
@@ -218,37 +350,15 @@ export function isClaudeCodeHookInput(x: unknown): x is ClaudeCodeHookInput {
 }
 
 /**
- * Resolve the project root for a running hook. Prefers the harness's project-dir
- * env var (Claude Code sets $CLAUDE_PROJECT_DIR), else derives it from the hook
- * file location (hooks live at <harnessDir>/hooks/<hook>.ts, so project root is
- * the harness dir's parent).
- */
-export function resolveProjectDirFromHook(hookUrl: string): string {
-  const env = process.env.CLAUDE_PROJECT_DIR || process.env.KIRO_PROJECT_DIR;
-  if (env && env.length > 0) return env;
-  return projectRootFromTool(hookUrl);
-}
-
-/**
  * Record a hook failure to the health dir so a doctor command can surface it.
  * Never throws — a hook must be a no-op on its own failure.
  */
 export function recordHookDrop(projectRoot: string, hook: string, message: string): void {
   try {
-    const harness = join(projectRoot, hookHarnessDirName(projectRoot));
-    const dir = hooksHealthDir(harness);
+    const dir = hooksHealthDir(projectRoot);
     mkdirSync(dir, { recursive: true });
     appendFileSync(join(dir, "hook-drops.log"), `${isoTimestamp()} ${hook}: ${message}\n`, "utf-8");
   } catch {
     /* swallow — health logging is best-effort */
   }
-}
-
-// The harness dir name under the project root. We ship exactly one harness tree
-// per install, so pick the first of the known set that exists.
-function hookHarnessDirName(projectRoot: string): string {
-  for (const name of [".claude", ".kiro", ".codex"]) {
-    if (existsSync(join(projectRoot, name))) return name;
-  }
-  return ".claude";
 }

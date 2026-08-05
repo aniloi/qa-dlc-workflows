@@ -8,16 +8,16 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import {
   errorMessage,
-  harnessDirFromTool,
+  engineRootFromTool,
   isClaudeCodeHookInput,
   recordHookDrop,
-  resolveProjectDirFromHook,
+  resolveProjectRootOrExit,
   type ClaudeCodeHookInput,
 } from "../tools/qadlc-lib.ts";
 import { readState } from "../tools/qadlc-state.ts";
 
-const projectDir = resolveProjectDirFromHook(import.meta.url);
-const harness = harnessDirFromTool(import.meta.url);
+const projectDir = resolveProjectRootOrExit(import.meta.url);
+const engineRoot = engineRootFromTool(import.meta.url);
 
 if (process.stdin.isTTY) process.exit(0);
 
@@ -54,7 +54,7 @@ if (base === "gherkin_plan.md") {
 }
 
 try {
-  const dispatcher = join(harness, "tools", "qadlc-sensor.ts");
+  const dispatcher = join(engineRoot, "tools", "qadlc-sensor.ts");
   if (!existsSync(dispatcher)) process.exit(0);
   spawnSync("bun", [dispatcher, "--stage", stage, "--file-path", file], {
     encoding: "utf-8",

@@ -4,7 +4,7 @@ aidlc-docs/audit.md
 aidlc-docs/.qadlc-sensors/
 
 # Machine-local runtime
-.kiro/tools/data/health/
+.qadlc/health/
 
 # Commit these — they are the deliverables
 # gherkin_plan.md

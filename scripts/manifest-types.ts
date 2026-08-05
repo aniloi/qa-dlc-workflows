@@ -57,6 +57,20 @@ export type HarnessManifest = {
   name: string;
   /** The harness directory the token substitutes to (".claude" | ".kiro" | ...). */
   harnessDir: string;
+  /**
+   * How the engine tree is installed, baked into harness.json.
+   *   "vendored" (default) — the tree lives inside the project, so the project
+   *                          root may be derived from the engine's own location.
+   *   "plugin"             — the tree is a shared read-only install; the project
+   *                          root must come from the environment or cwd.
+   */
+  mode?: "vendored" | "plugin";
+  /**
+   * The command string the engine emits for the conductor to run, baked into
+   * harness.json. Defaults to `bun <harnessDir>/tools/qadlc-orchestrate.ts`.
+   * A plugin target overrides it with a bare executable name.
+   */
+  entryCmd?: string;
   /** core/<src> → <harnessDir>/<dst> projections. */
   coreDirs: DirMap[];
   /** harness/<name>/<src> → <harnessDir>/<dst> authored-file copies. */

@@ -20,7 +20,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import {
-  harnessDirFromTool,
+  engineRootFromTool,
   listMarkdown,
   parseFrontmatter,
   walkMarkdown,
@@ -179,7 +179,7 @@ function main(): void {
   const args = process.argv.slice(2);
   const cmd = args[0];
   const check = args.includes("--check");
-  const root = harnessDirFromTool(import.meta.url);
+  const root = engineRootFromTool(import.meta.url);
 
   if (cmd !== "compile") {
     process.stderr.write("usage: qadlc-graph.ts compile [--check]\n");

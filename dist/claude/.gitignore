@@ -5,7 +5,7 @@ aidlc-docs/.qadlc-sensors/
 
 # Machine-local
 .claude/settings.local.json
-.claude/tools/data/health/
+.qadlc/health/
 
 # Commit these — they are the deliverables
 # gherkin_plan.md

@@ -13,7 +13,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { parseArgs, printJson, type Finding } from "./qadlc-sensor-lib.ts";
 import { parseFeature, realScenarios } from "./qadlc-gherkin.ts";
-import { projectRootFromTool } from "./qadlc-lib.ts";
+import { resolveProjectRoot } from "./qadlc-lib.ts";
 import { readState } from "./qadlc-state.ts";
 
 const SCOPE_TAGS = new Set(["@smoke", "@regression", "@e2e", "@exploratory"]);
@@ -23,7 +23,7 @@ const JIRA_TAG = /^@allure\.label\.jira=.+/;
 // workspace-detection stage records the input mode). Absent state → not Jira,
 // so the allure tag stays optional (advisory-safe default).
 function isJiraMode(): boolean {
-  const state = readState(projectRootFromTool(import.meta.url));
+  const state = readState(resolveProjectRoot(import.meta.url));
   return !!state && /jira/i.test(state.story_source);
 }
 

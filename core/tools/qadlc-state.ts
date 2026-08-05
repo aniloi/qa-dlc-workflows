@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import {
   docsRoot,
   isoTimestamp,
-  projectRootFromTool,
+  resolveProjectRoot,
   statePath,
 } from "./qadlc-lib.ts";
 
@@ -125,7 +125,7 @@ export function initState(projectRoot: string, patch: Partial<QaState>): QaState
 function main(): void {
   const args = process.argv.slice(2);
   const cmd = args[0];
-  const projectRoot = projectRootFromTool(import.meta.url);
+  const projectRoot = resolveProjectRoot(import.meta.url);
   const flag = (name: string): string => {
     const i = args.indexOf(name);
     return i >= 0 ? args[i + 1] ?? "" : "";

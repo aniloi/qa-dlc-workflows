@@ -5,12 +5,12 @@
 import {
   errorMessage,
   recordHookDrop,
-  resolveProjectDirFromHook,
+  resolveProjectRootOrExit,
 } from "../tools/qadlc-lib.ts";
 import { appendAuditEntry } from "../tools/qadlc-audit.ts";
 import { readState } from "../tools/qadlc-state.ts";
 
-const projectDir = resolveProjectDirFromHook(import.meta.url);
+const projectDir = resolveProjectRootOrExit(import.meta.url);
 
 try {
   const state = readState(projectDir);

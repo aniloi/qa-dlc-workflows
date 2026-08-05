@@ -15,18 +15,18 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import {
   harnessData,
-  harnessDirFromTool,
+  engineRootFromTool,
   isoTimestamp,
   loadJson,
-  projectRootFromTool,
+  resolveProjectRoot,
   sensorsDir,
 } from "./qadlc-lib.ts";
 import { parseSensorManifest } from "./qadlc-sensor-schema.ts";
 import { appendAuditEntry } from "./qadlc-audit.ts";
 import type { StageGraph } from "./qadlc-graph.ts";
 
-const HARNESS = harnessDirFromTool(import.meta.url);
-const PROJECT_ROOT = projectRootFromTool(import.meta.url);
+const ENGINE_ROOT = engineRootFromTool(import.meta.url);
+const PROJECT_ROOT = resolveProjectRoot(import.meta.url);
 
 function globToRegExp(glob: string): RegExp {
   // Single left-to-right scan so emitted regex fragments are never re-processed
@@ -65,7 +65,7 @@ interface SensorResult {
 }
 
 function runSensor(id: string, stage: string, filePath: string): SensorResult {
-  const tool = join(HARNESS, "tools", `qadlc-sensor-${id}.ts`);
+  const tool = join(ENGINE_ROOT, "tools", `qadlc-sensor-${id}.ts`);
   const r = spawnSync("bun", [tool, "--stage", stage, "--file-path", filePath], {
     encoding: "utf-8",
     timeout: 30_000,
@@ -115,7 +115,7 @@ function main(): void {
     process.exit(2);
   }
 
-  const graph = loadJson<StageGraph>(join(HARNESS, "tools", "data", "stage-graph.json"));
+  const graph = loadJson<StageGraph>(join(ENGINE_ROOT, "tools", "data", "stage-graph.json"));
   const stageDef = graph.stages.find((s) => s.slug === stage);
   if (!stageDef || stageDef.sensors.length === 0) {
     process.stdout.write(JSON.stringify({ stage, ran: [], skipped: [] }) + "\n");
@@ -129,7 +129,7 @@ function main(): void {
     // matches filter from the manifest
     let matches = "";
     try {
-      const raw = readFileSync(join(HARNESS, "sensors", `qadlc-${id}.md`), "utf-8");
+      const raw = readFileSync(join(ENGINE_ROOT, "sensors", `qadlc-${id}.md`), "utf-8");
       matches = parseSensorManifest(raw).matches ?? "";
     } catch {
       /* manifest missing — run anyway */
