@@ -67,3 +67,9 @@ Corrections captured in a stage's memory diary get promoted — a standing rule 
 One `harness/<name>/` directory with `manifest.ts` + `onboarding.fills.ts` (and
 any authored surfaces). The packager discovers it automatically — no edits to
 `scripts/` or `core/`. See the [Developer Reference](../reference/00-overview.md).
+
+## In progress
+
+- [Plugin target](01-plugin-target.md) — plan for shipping QADLC as a Claude Code
+  plugin installed once at user scope, alongside `dist/claude` and `dist/kiro`
+  ([#2](https://github.com/aniloi/qa-dlc-workflows/issues/2)).
