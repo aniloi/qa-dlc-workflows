@@ -393,9 +393,15 @@ That is more JSON but it is generated, not hand-maintained.
 Two fixes that pay off regardless of how far `if` gets us:
 
 1. **Move the health heartbeat after the no-op checks.** `qadlc-audit-logger.ts`
-   writes its heartbeat at L30–37, *before* parsing input and before the
-   is-this-an-artifact test. Every unrelated edit currently boots bun and writes
-   a file. The heartbeat belongs after L60.
+   writes its heartbeat at L33–35, *before* parsing input, before the
+   is-this-an-artifact test (L61), and before the state guard (L71). Every
+   unrelated edit in every repo currently boots bun and writes a file.
+
+   Phase 0 surfaced a second reason this must move, and it is not about
+   performance: once §7.5 relocates the health dir into the project, a hook that
+   otherwise correctly no-ops on a v1 project would still create `.qadlc/health/`
+   there — a v2 directory appearing in a repo that has no v2 session. **The
+   reorder must land with or before the health-dir move**, not after it.
 2. **Set explicit `timeout`s.** Particularly `SessionEnd`, which shares a 1.5 s
    budget across all hook sources.
 
@@ -474,11 +480,32 @@ if the file exists without the `<!-- qa-state:machine` marker, error with a
 migration message instead of overwriting. Belt and braces, and it costs four
 lines.
 
-**Preserve the existing safety property.** `readState()` requires the machine
-marker and returns `null` without it; every hook opens with
-`if (!state || !state.scope) exit(0)`. That is why v2 cannot misread v1 state
-today. Add a regression test asserting it, because §4 touches every one of those
-call sites.
+**The safety property was only two-thirds true — Phase 0 established it.**
+
+The issue (and an earlier draft of this section) claimed "every v2 hook opens with
+`if (!state || !state.scope) exit(0)`, so no v2 hook acts on v1 data." Writing the
+regression test disproved that for two of the five hooks, reproduced against
+packaged v2.0.0:
+
+| Hook | Guard before Phase 0 |
+|---|---|
+| `qadlc-stop.ts` | yes (L35) |
+| `qadlc-session-start.ts` | yes (L18) |
+| `qadlc-session-end.ts` | yes (L17) |
+| `qadlc-audit-logger.ts` | **none** — it never imported `readState`. Its "session is active" proxy was `existsSync(auditPath)`, which a v1 project satisfies, so a `.feature` write appended a v2 `ARTIFACT_CREATED` block into v1's `audit.md` |
+| `qadlc-sensor-fire.ts` | **partial** — state was read only on the `.feature` branch. `gherkin_plan.md` (a name v1 also produces) routed straight to the dispatcher, which appended `SENSOR_FAILED` to v1's `audit.md` and created `aidlc-docs/.qadlc-sensors/` |
+
+So collision 2 (shared audit log, two formats) was not a latent risk awaiting the
+plugin — it was live in the vendored tree. Both hooks now carry the standard
+guard, and `tests/coexistence.test.ts` pins all five.
+
+`readState()` requiring the machine marker remains the mechanism that
+distinguishes v1 from v2, and §4 touches every one of those call sites — which is
+exactly why the guard needed to be a test rather than an observation.
+
+The dispatcher (`qadlc-sensor.ts`) is deliberately left unguarded: it appends
+audit entries unconditionally, but it is only reachable from the hook or from
+explicit invocation, where running it *is* the user's intent.
 
 ### 8.2 Cede to a vendored install
 
@@ -609,7 +636,7 @@ green (`bun scripts/package.ts --check`).
 
 | Phase | Work | Exit criterion |
 |---|---|---|
-| **0. Guards** | Regression tests for the v1-safety property (§8.1) and the current `dist/claude` behavior | Tests pass on unmodified `v2` |
+| **0. Guards** ✅ | `tests/coexistence.test.ts`: v1-safety property (§8.1), a path inventory of today's artifact locations, `$CLAUDE_PROJECT_DIR` precedence. Fixed the two missing hook guards the tests exposed | **Done.** `bun run check` green: typecheck, no drift, 47 pass / 3 skip |
 | **1. Path resolution** | §4 in full: three roots, delete `projectRootFromTool`, `resolveProjectRoot()` + guardrail, `mode`/`entryCmd` in `harness.json`, `hooksHealthDir` → project | `--check` clean; existing tests green; no target-specific behavior yet |
 | **2. Namespacing** | §8.1 `.qadlc/` move, refuse-not-clobber guard, `.gitignore`, `qadlc migrate` | Migration tested against a fixture of both v1 and v2 `aidlc-docs/` |
 | **3. Plugin target** | §7: `harness/plugin/`, `emit()`, `bin/qadlc`, `hooks/hooks.json`, exec bit + mode checking in `--check` | `claude plugin validate ./dist/plugin --strict` passes; **plan-gate test (§7.3) passes against a plugin install** |
