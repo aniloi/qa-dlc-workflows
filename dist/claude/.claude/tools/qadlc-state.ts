@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// qadlc-state.ts — the tool-owned session state (aidlc-docs/qa-state.md).
+// qadlc-state.ts — the tool-owned session state (.qadlc/qa-state.md).
 //
 // State is machine-owned: the file carries a canonical JSON block (the single
 // source of truth) plus a human-readable render generated from it, so the two
@@ -16,7 +16,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import {
-  docsRoot,
+  stateRoot,
   isoTimestamp,
   resolveProjectRoot,
   statePath,
@@ -107,8 +107,29 @@ function render(s: QaState): string {
   return `${lines.join("\n")}`;
 }
 
+/**
+ * Refuse to overwrite a state file we did not write.
+ *
+ * writeState is a full-file overwrite. If something else owns qa-state.md — a
+ * QADLC v1 trail, a hand-edited file, a merge artefact — clobbering it destroys
+ * history, and on branches where the directory is tracked that lands as a
+ * destructive commit diff. The machine marker is the ownership proof, so its
+ * absence means stop, not proceed.
+ */
+function assertOwnedState(projectRoot: string): void {
+  const path = statePath(projectRoot);
+  if (!existsSync(path)) return;
+  if (readFileSync(path, "utf-8").includes(MACHINE_OPEN)) return;
+  throw new Error(
+    `${path} exists but carries no QADLC machine block, so it was not written by ` +
+      "this engine and will not be overwritten. Move it aside, or run `qadlc-migrate.ts` " +
+      "if it is a QADLC v1 trail.",
+  );
+}
+
 export function writeState(projectRoot: string, s: QaState): void {
-  mkdirSync(docsRoot(projectRoot), { recursive: true });
+  assertOwnedState(projectRoot);
+  mkdirSync(stateRoot(projectRoot), { recursive: true });
   s.last_updated = isoTimestamp();
   writeFileSync(statePath(projectRoot), render(s), "utf-8");
 }

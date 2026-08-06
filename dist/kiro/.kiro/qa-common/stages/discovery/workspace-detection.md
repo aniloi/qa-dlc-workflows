@@ -33,7 +33,7 @@ MANDATORY: Follow `stage-protocol.md` for approval gates, question format, and c
 ## Steps
 
 ### Step 1 — Detect resume
-Check for an existing `aidlc-docs/qa-state.md`. If present, this is a resume:
+Check for an existing `.qadlc/qa-state.md`. If present, this is a resume:
 load state and present the Welcome Back summary (see `session-continuity.md`),
 then hand control back to the engine (`report --stage workspace-detection`).
 
@@ -49,6 +49,10 @@ Determine the input mode from the user's request:
   `.md` under `aidlc-docs/inception/user-stories/`.
 - **Folder mode** — a folder path: read and normalize its files.
 - **Default mode** — read `aidlc-docs/inception/user-stories/` directly.
+
+> `aidlc-docs/inception/` is an **AIDLC input** directory that QADLC only reads.
+> It is deliberately not under `.qadlc/`: everything QADLC *writes* moved there,
+> but this path belongs to another tool's namespace and stays put.
 
 ### Step 4 — Select the style reference
 If the user names a style-reference `.feature`, use it. Otherwise auto-select the
@@ -66,7 +70,7 @@ None bound. Workspace Detection writes no `.feature` output; its record lives in
 
 ## Learn
 
-Maintain a diary at `aidlc-docs/.qadlc-memory/workspace-detection/memory.md`
+Maintain a diary at `.qadlc/diaries/workspace-detection/memory.md`
 (create on stage start if absent). Append ISO-timestamped bullets under
 **Interpretations**, **Deviations**, **Tradeoffs**, **Open questions**. Before
 completing, surface any candidate standing rule (e.g. a fixed steps-dir path for

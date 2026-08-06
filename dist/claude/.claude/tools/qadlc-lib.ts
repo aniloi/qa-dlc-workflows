@@ -271,25 +271,51 @@ export function assertUsableProjectRoot(projectRoot: string, engineRoot: string)
   }
 }
 
-// The workflow's runtime doc root. Kept as aidlc-docs/ to match QADLC v1
-// (qa-state.md, audit.md live here).
-export const DOCS_DIR = "aidlc-docs";
+// ---------------------------------------------------------------------------
+// Runtime artefact paths — all under .qadlc/ (see STATE_DIR above)
+// ---------------------------------------------------------------------------
+// These used to live in aidlc-docs/, a directory QADLC v1 also owns and writes
+// differently. That compatibility choice made v1 and v2 fight over qa-state.md
+// and audit.md; namespacing under .qadlc/ removes the collision structurally
+// rather than guarding against it.
+//
+// NOT moved: aidlc-docs/inception/user-stories/ is an AIDLC INPUT directory that
+// QADLC only ever reads. It is someone else's namespace and stays where it is.
 
-export function docsRoot(projectRoot: string): string {
-  return join(projectRoot, DOCS_DIR);
+/** The legacy root. Retained only so `qadlc-migrate.ts` can find what to move. */
+export const LEGACY_DOCS_DIR = "aidlc-docs";
+
+export function legacyDocsRoot(projectRoot: string): string {
+  return join(projectRoot, LEGACY_DOCS_DIR);
 }
+
 export function statePath(projectRoot: string): string {
-  return join(docsRoot(projectRoot), "qa-state.md");
+  return join(stateRoot(projectRoot), "qa-state.md");
 }
 export function auditPath(projectRoot: string): string {
-  return join(docsRoot(projectRoot), "audit.md");
+  return join(stateRoot(projectRoot), "audit.md");
 }
+/** The plan stays at the project root: it is a human-reviewed deliverable. */
 export function planPath(projectRoot: string): string {
   return join(projectRoot, "gherkin_plan.md");
 }
-/** Per-stage sensor detail-file directory: aidlc-docs/.qadlc-sensors/<slug>/. */
+/** Per-stage sensor detail-file directory: .qadlc/sensors/<slug>/. */
 export function sensorsDir(projectRoot: string, stageSlug: string): string {
-  return join(docsRoot(projectRoot), ".qadlc-sensors", stageSlug);
+  return join(stateRoot(projectRoot), "sensors", stageSlug);
+}
+/**
+ * Per-stage conductor diary: .qadlc/diaries/<slug>/memory.md.
+ *
+ * Named "diaries", not "memory": .qadlc/memory/ is reserved for the project's
+ * hand-authored team.md / project.md, which a plugin install materializes there.
+ * The old path (.qadlc-memory/) would have collided with it.
+ */
+export function diaryDir(projectRoot: string, stageSlug: string): string {
+  return join(stateRoot(projectRoot), "diaries", stageSlug);
+}
+/** The step-inventory oracle consumed by the step-existence sensor. */
+export function stepCatalogPath(projectRoot: string): string {
+  return join(stateRoot(projectRoot), "step-catalog.json");
 }
 /**
  * Hook health-heartbeat dir. Takes the PROJECT root, not the engine root: this

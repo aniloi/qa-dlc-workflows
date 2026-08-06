@@ -8,11 +8,14 @@
 //      on main), so any v2 rollout lands on top of a live v1 install. v2 must
 //      neither act on v1 state nor mutate v1's files. §8.1 of the plan.
 //
-//   2. "path inventory" — a deliberate lockfile of WHERE runtime artifacts land
-//      today. Phase 1 moves the hook-health dir out of the install tree and
-//      Phase 2 moves state/audit/sensors to .qadlc/, so these assertions are
-//      EXPECTED TO CHANGE. Updating them is the visible diff that proves the
-//      move happened; a surprise failure here means an accidental relocation.
+//   2. "path inventory" — a deliberate lockfile of WHERE runtime artifacts land.
+//      Phase 1 moved the hook-health dir out of the install tree; Phase 2 moved
+//      state, audit, sensor details, diaries and the step catalog to .qadlc/.
+//      Both moves showed up here as a required diff, which is the point: a
+//      surprise failure means an accidental relocation.
+//
+//   3. "migration" — qadlc-migrate.ts against fixtures of both a v1 and a v2
+//      aidlc-docs/, since a real rollout meets both.
 //
 // Runs against dist/claude (not dist/kiro like integration.test.ts): the tree the
 // plugin must cede to is a vendored .claude/, so that is the collision surface.
@@ -175,7 +178,7 @@ describe("v1 coexistence: v2 does not act on v1 state", () => {
     writeFileSync(join(p, "gherkin_plan.md"), "# Plan\n\n## Story-to-Scenario Mapping\nx\n", "utf-8");
     runHook(p, "qadlc-sensor-fire.ts", writeEvent(p, "gherkin_plan.md"));
     expect(readFileSync(join(p, "aidlc-docs", "audit.md"), "utf-8")).toBe(V1_AUDIT);
-    expect(existsSync(join(p, "aidlc-docs", ".qadlc-sensors"))).toBe(false);
+    expect(existsSync(join(p, ".qadlc"))).toBe(false);
   });
 
   test("v1's qa-state.md is byte-identical after every hook has run", () => {
@@ -193,27 +196,28 @@ describe("v1 coexistence: v2 does not act on v1 state", () => {
     expect(readFileSync(join(p, "aidlc-docs", "qa-state.md"), "utf-8")).toBe(V1_STATE);
   });
 
-  // Phase 2: writeState() is an unconditional overwrite, so the first v2 session
-  // in a repo with v1 history destroys it. The fix is to refuse when the machine
-  // marker is absent. Asserted once that guard exists.
-  test.skip("PHASE 2: the engine refuses to overwrite a marker-less qa-state.md", () => {});
+  // The clobber this used to guard against is now structurally impossible: v2
+  // writes .qadlc/qa-state.md and never touches aidlc-docs/. The refuse-not-
+  // clobber guard is asserted directly under "state ownership" below.
 });
 
 // ---------------------------------------------------------------------------
 // 2. Path inventory — EXPECTED to change in Phases 1 and 2
 // ---------------------------------------------------------------------------
 describe("path inventory: where runtime artifacts land today", () => {
-  test("state and audit live under aidlc-docs/ (Phase 2 moves these to .qadlc/)", () => {
+  test("state and audit live under .qadlc/", () => {
     const p = v2Project();
-    expect(existsSync(join(p, "aidlc-docs", "qa-state.md"))).toBe(true);
-    expect(existsSync(join(p, "aidlc-docs", "audit.md"))).toBe(true);
+    expect(existsSync(join(p, ".qadlc", "qa-state.md"))).toBe(true);
+    expect(existsSync(join(p, ".qadlc", "audit.md"))).toBe(true);
+    // and nothing was left in the namespace QADLC v1 owns
+    expect(existsSync(join(p, "aidlc-docs"))).toBe(false);
   });
 
-  test("sensor details land under aidlc-docs/.qadlc-sensors/<slug>/ (Phase 2 moves these)", () => {
+  test("sensor details land under .qadlc/sensors/<slug>/", () => {
     const p = v2Project();
     writeFileSync(join(p, "features", "bad.feature"), "Feature: B\n\n  Scenario: x\n    And nope\n    Then y\n", "utf-8");
     spawnSync("bun", [tool(p, "qadlc-sensor.ts"), "--stage", "feature-generation", "--file-path", "features/bad.feature"], { cwd: p });
-    const dir = join(p, "aidlc-docs", ".qadlc-sensors", "feature-generation");
+    const dir = join(p, ".qadlc", "sensors", "feature-generation");
     expect(existsSync(dir)).toBe(true);
     expect(readdirSync(dir).length).toBeGreaterThan(0);
   });
@@ -255,7 +259,7 @@ describe("project-root resolution", () => {
     runHook(host, "qadlc-session-end.ts", { hook_event_name: "SessionEnd" }, {
       CLAUDE_PROJECT_DIR: target,
     });
-    expect(readFileSync(join(target, "aidlc-docs", "audit.md"), "utf-8")).toContain("SESSION_ENDED");
+    expect(readFileSync(join(target, ".qadlc", "audit.md"), "utf-8")).toContain("SESSION_ENDED");
     // and the host project's v1 audit was left alone
     expect(readFileSync(join(host, "aidlc-docs", "audit.md"), "utf-8")).toBe(V1_AUDIT);
   });
@@ -272,7 +276,7 @@ describe("project-root resolution", () => {
     // would still return a valid-looking object. Distinguish by started time.
     const viaEnv = JSON.parse(r.stdout ?? "{}");
     const targetState = JSON.parse(
-      readFileSync(join(target, "aidlc-docs", "qa-state.md"), "utf-8").split("<!-- qa-state:machine")[1].split("-->")[0],
+      readFileSync(join(target, ".qadlc", "qa-state.md"), "utf-8").split("<!-- qa-state:machine")[1].split("-->")[0],
     );
     expect(viaEnv.started).toBe(targetState.started);
   });
@@ -302,8 +306,8 @@ describe("project-root resolution", () => {
         env: withoutProjectEnv(),
       });
       expect(r.status).toBe(0);
-      expect(existsSync(join(proj, "aidlc-docs", "qa-state.md"))).toBe(true);
-      expect(existsSync(join(proj, "src", "deep", "aidlc-docs"))).toBe(false);
+      expect(existsSync(join(proj, ".qadlc", "qa-state.md"))).toBe(true);
+      expect(existsSync(join(proj, "src", "deep", ".qadlc"))).toBe(false);
     });
 
     test("an initialized .qadlc/ outranks an enclosing .git/", () => {
@@ -314,8 +318,8 @@ describe("project-root resolution", () => {
         cwd: inner,
         env: withoutProjectEnv(),
       });
-      expect(existsSync(join(inner, "aidlc-docs", "qa-state.md"))).toBe(true);
-      expect(existsSync(join(proj, "aidlc-docs"))).toBe(false);
+      expect(existsSync(join(inner, ".qadlc", "qa-state.md"))).toBe(true);
+      expect(existsSync(join(proj, ".qadlc"))).toBe(false);
     });
 
     test("resolution refuses a project root inside the engine tree", () => {
@@ -340,5 +344,117 @@ describe("project-root resolution", () => {
       expect(r.status).toBe(0);
       expect(r.stdout ?? "").toBe("");
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Refuse-not-clobber + migration
+// ---------------------------------------------------------------------------
+describe("state ownership", () => {
+  test("the engine refuses to overwrite a qa-state.md it does not own", () => {
+    // writeState is a full-file overwrite. Anything without the machine block —
+    // a v1 trail, a hand-edit, a merge artefact — must stop it, not be replaced.
+    const p = mkdtempSync(join(tmpdir(), "qadlc-own-"));
+    cpSync(DIST_CLAUDE, tree(p), { recursive: true });
+    mkdirSync(join(p, ".qadlc"), { recursive: true });
+    const foreign = "# Not ours\n\nhand-written\n";
+    writeFileSync(join(p, ".qadlc", "qa-state.md"), foreign, "utf-8");
+    const r = spawnSync("bun", [tool(p, "qadlc-orchestrate.ts"), "report", "--scope", "smoke"], {
+      cwd: p,
+      encoding: "utf-8",
+    });
+    expect(r.status).not.toBe(0);
+    expect(r.stderr ?? "").toContain("no QADLC machine block");
+    expect(readFileSync(join(p, ".qadlc", "qa-state.md"), "utf-8")).toBe(foreign);
+  });
+});
+
+describe("migration from aidlc-docs/", () => {
+  const migrate = (p: string, ...args: string[]) =>
+    spawnSync("bun", [tool(p, "qadlc-migrate.ts"), ...args], { cwd: p, encoding: "utf-8" });
+
+  test("moves v2 artefacts and leaves the legacy root only if empty", () => {
+    const p = mkdtempSync(join(tmpdir(), "qadlc-mig2-"));
+    cpSync(DIST_CLAUDE, tree(p), { recursive: true });
+    // A v2-format session laid out the old way.
+    const legacy = join(p, "aidlc-docs");
+    mkdirSync(join(legacy, ".qadlc-sensors", "feature-generation"), { recursive: true });
+    mkdirSync(join(legacy, ".qadlc-memory", "story-analysis"), { recursive: true });
+    mkdirSync(join(legacy, ".qadlc"), { recursive: true });
+    writeFileSync(join(legacy, "qa-state.md"), `x\n<!-- qa-state:machine\n{"scope":"smoke"}\n-->\n`, "utf-8");
+    writeFileSync(join(legacy, "audit.md"), "# QADLC Audit Trail\n\n## PLAN_APPROVED\n", "utf-8");
+    writeFileSync(join(legacy, ".qadlc-sensors", "feature-generation", "gherkin-lint-1.md"), "d\n", "utf-8");
+    writeFileSync(join(legacy, ".qadlc-memory", "story-analysis", "memory.md"), "diary\n", "utf-8");
+    writeFileSync(join(legacy, ".qadlc", "step-catalog.json"), '{"steps":[]}\n', "utf-8");
+
+    const r = migrate(p);
+    expect(r.status).toBe(0);
+    expect(existsSync(join(p, ".qadlc", "qa-state.md"))).toBe(true);
+    expect(existsSync(join(p, ".qadlc", "audit.md"))).toBe(true);
+    expect(existsSync(join(p, ".qadlc", "sensors", "feature-generation", "gherkin-lint-1.md"))).toBe(true);
+    expect(existsSync(join(p, ".qadlc", "diaries", "story-analysis", "memory.md"))).toBe(true);
+    expect(existsSync(join(p, ".qadlc", "step-catalog.json"))).toBe(true);
+    // The engine reads the moved state, so the session survives the move.
+    const shown = spawnSync("bun", [tool(p, "qadlc-state.ts"), "show"], { cwd: p, encoding: "utf-8" });
+    expect(JSON.parse(shown.stdout ?? "{}").scope).toBe("smoke");
+  });
+
+  test("leaves v1 state in place and never deletes it", () => {
+    const p = v1Project();
+    const r = migrate(p);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("left in place");
+    // v1's files are untouched, and v2 claimed nothing in their namespace.
+    expect(readFileSync(join(p, "aidlc-docs", "qa-state.md"), "utf-8")).toBe(V1_STATE);
+    expect(existsSync(join(p, ".qadlc", "qa-state.md"))).toBe(false);
+  });
+
+  test("never touches aidlc-docs/inception/, an AIDLC input directory", () => {
+    const p = mkdtempSync(join(tmpdir(), "qadlc-mig3-"));
+    cpSync(DIST_CLAUDE, tree(p), { recursive: true });
+    const stories = join(p, "aidlc-docs", "inception", "user-stories");
+    mkdirSync(stories, { recursive: true });
+    writeFileSync(join(stories, "CLM-1.md"), "story\n", "utf-8");
+    writeFileSync(join(p, "aidlc-docs", "audit.md"), "# QADLC Audit Trail\n", "utf-8");
+
+    expect(migrate(p).status).toBe(0);
+    expect(existsSync(join(stories, "CLM-1.md"))).toBe(true);
+    expect(existsSync(join(p, ".qadlc", "audit.md"))).toBe(true);
+    // legacy root survives because inception/ still lives there
+    expect(existsSync(join(p, "aidlc-docs"))).toBe(true);
+  });
+
+  test("--dry-run reports without moving anything", () => {
+    const p = mkdtempSync(join(tmpdir(), "qadlc-mig4-"));
+    cpSync(DIST_CLAUDE, tree(p), { recursive: true });
+    mkdirSync(join(p, "aidlc-docs"), { recursive: true });
+    writeFileSync(join(p, "aidlc-docs", "audit.md"), "# QADLC Audit Trail\n", "utf-8");
+    const r = migrate(p, "--dry-run");
+    expect(r.stdout).toContain("would move");
+    expect(existsSync(join(p, "aidlc-docs", "audit.md"))).toBe(true);
+    expect(existsSync(join(p, ".qadlc", "audit.md"))).toBe(false);
+  });
+
+  test("skips rather than overwrites when the destination exists", () => {
+    const p = mkdtempSync(join(tmpdir(), "qadlc-mig5-"));
+    cpSync(DIST_CLAUDE, tree(p), { recursive: true });
+    mkdirSync(join(p, "aidlc-docs"), { recursive: true });
+    mkdirSync(join(p, ".qadlc"), { recursive: true });
+    writeFileSync(join(p, "aidlc-docs", "audit.md"), "OLD\n", "utf-8");
+    writeFileSync(join(p, ".qadlc", "audit.md"), "NEW\n", "utf-8");
+    const r = migrate(p);
+    expect(r.stdout).toContain("SKIPPED");
+    expect(readFileSync(join(p, ".qadlc", "audit.md"), "utf-8")).toBe("NEW\n");
+    expect(readFileSync(join(p, "aidlc-docs", "audit.md"), "utf-8")).toBe("OLD\n");
+  });
+
+  test("removes the stale hook-health dir Phase 1 orphaned", () => {
+    const p = mkdtempSync(join(tmpdir(), "qadlc-mig6-"));
+    cpSync(DIST_CLAUDE, tree(p), { recursive: true });
+    const stale = join(tree(p), "tools", "data", "health");
+    mkdirSync(stale, { recursive: true });
+    writeFileSync(join(stale, "audit-logger.last"), "2026-01-01T00:00:00Z", "utf-8");
+    expect(migrate(p).status).toBe(0);
+    expect(existsSync(stale)).toBe(false);
   });
 });

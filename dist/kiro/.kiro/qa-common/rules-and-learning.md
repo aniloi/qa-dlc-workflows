@@ -7,7 +7,7 @@ and file-driven — no hidden state.
 ## The loop
 
 ```
-stage runs → conductor keeps a diary (aidlc-docs/.qadlc-memory/<stage>/memory.md)
+stage runs → conductor keeps a diary (.qadlc/diaries/<stage>/memory.md)
            → before the gate, surfaces candidates
            → user keeps some
            → each kept item is written to ONE of:

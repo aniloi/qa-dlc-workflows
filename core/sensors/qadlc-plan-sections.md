@@ -20,5 +20,5 @@ artifact rather than a remembered rule.
 ## Failure mode
 
 Emits `SENSOR_FAILED` and writes detail to
-`aidlc-docs/.qadlc-sensors/gherkin-plan/plan-sections-<ts>.md` naming each missing
+`.qadlc/sensors/gherkin-plan/plan-sections-<ts>.md` naming each missing
 section. Advisory — surfaced at the plan-approval gate.

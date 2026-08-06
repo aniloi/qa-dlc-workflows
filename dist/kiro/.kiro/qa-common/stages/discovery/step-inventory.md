@@ -59,5 +59,5 @@ files.
 
 ## Learn
 
-Diary at `aidlc-docs/.qadlc-memory/step-inventory/memory.md`. Note domains with
+Diary at `.qadlc/diaries/step-inventory/memory.md`. Note domains with
 sparse coverage (likely sources of new-step requests) for later attention.

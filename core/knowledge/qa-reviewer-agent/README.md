@@ -22,6 +22,6 @@
 
 ## Reading sensor findings
 
-Sensor detail files land in `aidlc-docs/.qadlc-sensors/<stage>/`. Treat them as a
+Sensor detail files land in `.qadlc/sensors/<stage>/`. Treat them as a
 second opinion: confirm true positives, and for a false positive, consider whether
 the rule itself needs tuning (a learning-loop candidate).

@@ -490,8 +490,30 @@ Abandon the v1 path-compatibility choice (`qadlc-lib.ts:147`, "Kept as
 | state | `aidlc-docs/qa-state.md` | `.qadlc/qa-state.md` |
 | audit | `aidlc-docs/audit.md` | `.qadlc/audit.md` |
 | sensor details | `aidlc-docs/.qadlc-sensors/<slug>/` | `.qadlc/sensors/<slug>/` |
-| hook health | `.claude/tools/data/health/` | `.qadlc/health/` |
+| stage diaries | `aidlc-docs/.qadlc-memory/<slug>/memory.md` | `.qadlc/diaries/<slug>/memory.md` |
+| step catalog | `aidlc-docs/.qadlc/step-catalog.json` | `.qadlc/step-catalog.json` |
+| hook health | `.claude/tools/data/health/` | `.qadlc/health/` (Phase 1) |
 | plan | `gherkin_plan.md` | unchanged — a human-reviewed deliverable, belongs in the open |
+| **story input** | `aidlc-docs/inception/user-stories/` | **unchanged — not ours** |
+
+**Two rows this table was missing, and one that must not move.** The original
+version listed only state, audit, sensors and health. Grepping the prose for the
+migration turned up two more v2 namespaces — the per-stage conductor diaries and
+the step catalog — that exist only in prose and in one sensor's bespoke path
+walk, which is why a code-only survey missed them.
+
+More important: `aidlc-docs/` is **not** a QADLC-owned directory to rename.
+`aidlc-docs/inception/user-stories/` is an AIDLC **input** path that QADLC only
+ever reads. So this is not "rename `aidlc-docs/` to `.qadlc/`" — it is "move
+everything QADLC *writes* into its own namespace and leave the input path alone."
+The distinction is called out in `workspace-detection.md` so a later reader does
+not tidy it away.
+
+**Diaries are `.qadlc/diaries/`, not `.qadlc/memory/`.** The obvious translation
+of `.qadlc-memory/` would have collided head-on with §7.4, where the project's
+hand-authored `team.md` / `project.md` land in `.qadlc/memory/`. Two unrelated
+concepts, one directory — caught here rather than in Phase 3. "Diary" is already
+the word the stage prose uses.
 
 This is structural, not defensive: v2 no longer touches any path v1 owns, so
 collisions 1 (state clobber) and 2 (mixed-format audit) cease to exist rather
@@ -661,7 +683,7 @@ green (`bun scripts/package.ts --check`).
 |---|---|---|
 | **0. Guards** ✅ | `tests/coexistence.test.ts`: v1-safety property (§8.1), a path inventory of today's artifact locations, `$CLAUDE_PROJECT_DIR` precedence. Fixed the two missing hook guards the tests exposed | **Done.** `bun run check` green: typecheck, no drift, 47 pass / 3 skip |
 | **1. Path resolution** ✅ | §4 in full: three roots, `projectRootFromTool` and `resolveProjectDirFromHook` deleted, `resolveProjectRoot()` + `…OrExit()` + guardrail, `mode`/`entryCmd` in `harness.json`, `orchestrateCmd()` reads `entryCmd`, `hooksHealthDir` → `.qadlc/health/`, heartbeat moved after the guards, `hookHarnessDirName` deleted | **Done.** `bun run check` green: no drift, 53 pass / 1 skip. Vendored `orchestrateCmd` output byte-identical; `--doctor` now reports mode + both roots |
-| **2. Namespacing** | §8.1 `.qadlc/` move, refuse-not-clobber guard, `.gitignore`, `qadlc migrate` | Migration tested against a fixture of both v1 and v2 `aidlc-docs/` |
+| **2. Namespacing** ✅ | §8.1 `.qadlc/` move (state, audit, sensors, diaries, step catalog), refuse-not-clobber in `writeState`, both `.gitignore`s, `core/tools/qadlc-migrate.ts` with `--dry-run`, 30 prose paths rewritten, the step-existence sensor's bespoke walk-up folded into the shared resolver | **Done.** `bun run check` green: no drift, 60 pass / 0 skip. Migration verified against mixed v1+v2+`inception/` fixtures; a migrated session resumes correctly |
 | **3. Plugin target** | §7: `harness/plugin/`, `emit()`, `bin/qadlc`, `hooks/hooks.json`, exec bit + mode checking in `--check` | `claude plugin validate ./dist/plugin --strict` passes; **plan-gate test (§7.3) passes against a plugin install** |
 | **4. Docs/token** | §6: `{{QADLC_CMD}}`, `{{PROJECT_MEMORY_DIR}}`, engine paths out of prose, `SKILL.md` absorbs `rules-qadlc.md`, fix the `.ts` token | Packager asserts no surviving `{{HARNESS_DIR}}` in the plugin target; `core/` prose byte-identical across targets |
 | **5. Coexistence** | §8.2 cede-to-vendored, §8.3 trigger narrowing, `SessionStart` notice | Manual test: plugin installed + vendored tree present → each hook fires exactly once |

@@ -23,7 +23,7 @@ whole run.
   which stage runs next, under which scope and depth, when the plan gate blocks,
   and when the workflow is done. It derives every decision from the compiled
   graph (`tools/data/stage-graph.json`, `scope-grid.json`) and the session state
-  (`aidlc-docs/qa-state.md`). You never second-guess its routing.
+  (`.qadlc/qa-state.md`). You never second-guess its routing.
 - **You** own execution quality: running the named stage, adopting the lead
   agent's voice, asking good questions, and surfacing decisions at gates.
 
@@ -71,7 +71,7 @@ tracks written/total and advances only when the last file is done.
 ## Keeping the diary (memory.md)
 
 Every stage keeps an observation diary at
-`aidlc-docs/.qadlc-memory/<stage>/memory.md` (create on stage start if absent;
+`.qadlc/diaries/<stage>/memory.md` (create on stage start if absent;
 never overwrite on resume). Append ISO-timestamped bullets under **Interpretations**,
 **Deviations**, **Tradeoffs**, **Open questions**. Before a gate, read it and
 surface any candidate standing rule or new sensor for promotion (see

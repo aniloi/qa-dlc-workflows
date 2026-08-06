@@ -87,6 +87,6 @@ None bound. Story Analysis produces notes, not `.feature` output.
 
 ## Learn
 
-Diary at `aidlc-docs/.qadlc-memory/story-analysis/memory.md`. Record
+Diary at `.qadlc/diaries/story-analysis/memory.md`. Record
 interpretations of ambiguous criteria and any recurring story-shape conventions
 worth promoting to team memory.

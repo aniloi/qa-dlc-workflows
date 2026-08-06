@@ -60,13 +60,13 @@ statement wins.
 
 Sensors declared in a stage's `sensors:` frontmatter fire automatically on that
 stage's file writes (via the sensor-fire hook, Phase 5). They are **advisory**:
-findings are written to `aidlc-docs/.qadlc-sensors/<stage>/` and surfaced at the
+findings are written to `.qadlc/sensors/<stage>/` and surfaced at the
 next gate. A failing sensor does not silently block, but you must address or
 consciously accept each finding.
 
 ## §Learn — the learning ritual
 
-Each stage keeps a diary (`aidlc-docs/.qadlc-memory/<stage>/memory.md`). Before a
+Each stage keeps a diary (`.qadlc/diaries/<stage>/memory.md`). Before a
 gate, read it and surface candidates:
 
 - **Prescriptive rule** → write to team memory (`.claude/memory/team.md`

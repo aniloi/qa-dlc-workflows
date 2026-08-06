@@ -11,7 +11,7 @@
 //       → records an outcome into qa-state.md, appends audit, prints new state
 //
 // Reads the compiled data plane (tools/data/stage-graph.json, scope-grid.json)
-// and the session state (aidlc-docs/qa-state.md). Never guesses — every routing
+// and the session state (.qadlc/qa-state.md). Never guesses — every routing
 // decision is derived from the graph + state.
 
 import { existsSync, readFileSync } from "node:fs";

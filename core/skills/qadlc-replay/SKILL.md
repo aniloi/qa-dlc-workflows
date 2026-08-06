@@ -11,7 +11,7 @@ recovering state after an interruption.
 
 ## What to do
 
-1. Read `aidlc-docs/audit.md` top to bottom.
+1. Read `.qadlc/audit.md` top to bottom.
 2. Render the timeline in order — one line per event block:
 
 ```

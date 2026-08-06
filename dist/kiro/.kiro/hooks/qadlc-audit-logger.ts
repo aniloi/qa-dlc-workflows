@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // qadlc-audit-logger.ts — PostToolUse hook. Emits ARTIFACT_CREATED /
 // ARTIFACT_UPDATED to the audit trail when a workflow file (a .feature, the
-// plan, or anything under aidlc-docs/) is written or edited. This is the
+// plan, or anything under .qadlc/) is written or edited. This is the
 // determinism that replaces QADLC v1's "MANDATORY: log in audit.md" prose —
 // the log happens whether or not the model remembers to.
 //
@@ -13,9 +13,8 @@ import { join } from "node:path";
 import { appendAuditEntry, ensureAudit } from "../tools/qadlc-audit.ts";
 import {
   auditPath,
-  docsRoot,
+  stateRoot,
   errorMessage,
-  engineRootFromTool,
   hooksHealthDir,
   isClaudeCodeHookInput,
   isoTimestamp,
@@ -44,21 +43,21 @@ const tool = parsed.tool_name ?? "";
 const file = (parsed.tool_input?.file_path ?? "").replace(/\\/g, "/");
 if (file === "") process.exit(0);
 
-// Only log workflow artifacts: anything under aidlc-docs/, the plan, or a .feature.
-const docs = docsRoot(projectDir).replace(/\\/g, "/");
+// Only log workflow artifacts: anything under .qadlc/, the plan, or a .feature.
+const state_ = stateRoot(projectDir).replace(/\\/g, "/");
 const plan = planPath(projectDir).replace(/\\/g, "/");
 const isArtifact =
-  file.startsWith(`${docs}/`) || file === plan || file.endsWith(".feature");
+  file.startsWith(`${state_}/`) || file === plan || file.endsWith(".feature");
 if (!isArtifact) process.exit(0);
 
 // Never log writes to the audit file itself (avoid recursion).
 if (file.endsWith("/audit.md")) process.exit(0);
 
-// Only log when a v2 session is active. The audit file existing is not enough:
-// QADLC v1 owns aidlc-docs/audit.md too and writes it in a different format, so
-// a v1 project satisfies the file check and would have v2 blocks appended into
-// its v1 trail. readState() returns null without the machine marker, which is
-// what distinguishes the two.
+// Only log when a v2 session is active. The audit file existing is not enough on
+// its own: before .qadlc/ namespacing, v1's aidlc-docs/audit.md satisfied that
+// check and got v2-format blocks appended into it. The paths no longer overlap,
+// but the state read is still the correct gate — a hook must not write anything
+// when there is no session — and it keeps the guard independent of the layout.
 const state = readState(projectDir);
 if (!state || !state.scope) process.exit(0);
 if (!existsSync(auditPath(projectDir))) process.exit(0);

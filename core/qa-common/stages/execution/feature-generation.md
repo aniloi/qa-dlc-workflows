@@ -61,11 +61,11 @@ written == total). Then it advances to the Cross-Feature Consistency Check.
 
 Bound in Phase 4 (`gherkin-lint`, `step-existence`, `tag-policy`). Each fires on
 every `.feature` write via the sensor-fire hook and writes advisory detail to
-`aidlc-docs/.qadlc-sensors/feature-generation/`. Advisory: findings surface at
+`.qadlc/sensors/feature-generation/`. Advisory: findings surface at
 the gate; they do not silently block.
 
 ## Learn
 
-Diary at `aidlc-docs/.qadlc-memory/feature-generation/memory.md`. Record any new
+Diary at `.qadlc/diaries/feature-generation/memory.md`. Record any new
 step definition you had to request and why no existing step fit — a repeated
 pattern is a candidate new standing step or a gap to raise with the team.

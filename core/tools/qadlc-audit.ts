@@ -12,7 +12,7 @@
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import {
   auditPath,
-  docsRoot,
+  stateRoot,
   isoTimestamp,
   resolveProjectRoot,
 } from "./qadlc-lib.ts";
@@ -20,7 +20,7 @@ import {
 const HEADER = "# QADLC Audit Trail\n\n> Append-only. Every user input is captured verbatim; every engine/hook\n> event is timestamped. Never edit prior entries.\n\n";
 
 export function ensureAudit(projectRoot: string): string {
-  const dir = docsRoot(projectRoot);
+  const dir = stateRoot(projectRoot);
   mkdirSync(dir, { recursive: true });
   const path = auditPath(projectRoot);
   if (!existsSync(path)) writeFileSync(path, HEADER, "utf-8");

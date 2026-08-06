@@ -19,5 +19,5 @@ names across files" from an AI-remembered rule into a repeatable check.
 ## Failure mode
 
 Emits `SENSOR_FAILED` and writes detail to
-`aidlc-docs/.qadlc-sensors/<stage>/duplicate-scenario-name-<ts>.md` listing each
+`.qadlc/sensors/<stage>/duplicate-scenario-name-<ts>.md` listing each
 duplicated name and the files it appears in.

@@ -12,7 +12,7 @@ timeout_seconds: 15
 # step-existence sensor
 
 Checks each `Given`/`When`/`Then` step against a step catalog at
-`aidlc-docs/.qadlc/step-catalog.json` (written by the Step Inventory stage;
+`.qadlc/step-catalog.json` (written by the Step Inventory stage;
 entries may use Cucumber `{int}`/`{string}`/`{word}`/`{float}` placeholders). A
 step that matches no catalog entry is flagged — the deterministic enforcement of
 the "reuse over invention" tenet.
@@ -24,5 +24,5 @@ Inventory to turn the check on.
 ## Failure mode
 
 Emits `SENSOR_FAILED` and writes detail to
-`aidlc-docs/.qadlc-sensors/<stage>/step-existence-<ts>.md` listing each step
+`.qadlc/sensors/<stage>/step-existence-<ts>.md` listing each step
 with no matching definition.

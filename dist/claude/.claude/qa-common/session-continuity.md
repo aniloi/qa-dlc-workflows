@@ -2,7 +2,7 @@
 
 When a user returns to an in-progress QADLC session, restore full context before
 doing any work. The engine makes this deterministic: state lives in the tool-owned
-`aidlc-docs/qa-state.md`, so resume is a state read, not a guess.
+`.qadlc/qa-state.md`, so resume is a state read, not a guess.
 
 ## Detection
 

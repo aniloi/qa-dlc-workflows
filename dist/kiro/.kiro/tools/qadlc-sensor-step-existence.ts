@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // qadlc-sensor-step-existence.ts — verify every step in a .feature resolves to
 // a known step definition. The oracle is a step catalog the step-inventory stage
-// writes to aidlc-docs/.qadlc/step-catalog.json. If the catalog is absent the
+// writes to .qadlc/step-catalog.json. If the catalog is absent the
 // sensor exits 127 (tool-unavailable → advisory pass) rather than false-flagging
 // — honest determinism, mirroring a linter with no config.
 //
@@ -12,21 +12,21 @@
 // compiled to a permissive regex for matching.
 
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { resolveProjectRoot, stepCatalogPath } from "./qadlc-lib.ts";
 import { parseArgs, printJson, type Finding } from "./qadlc-sensor-lib.ts";
 import { parseFeature, realScenarios } from "./qadlc-gherkin.ts";
 
-// Walk up from the feature file to find aidlc-docs/.qadlc/step-catalog.json.
-function findCatalog(fromFile: string): string | null {
-  let dir = dirname(fromFile);
-  for (let i = 0; i < 12; i++) {
-    const cand = join(dir, "aidlc-docs", ".qadlc", "step-catalog.json");
-    if (existsSync(cand)) return cand;
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
+// The catalog lives at .qadlc/step-catalog.json. Resolved through the shared
+// project-root resolver rather than a second bespoke walk-up: this file used to
+// hunt for aidlc-docs/.qadlc/ on its own, which was a third way of answering
+// "where is the project" and would have drifted from the other two.
+function findCatalog(): string | null {
+  try {
+    const cand = stepCatalogPath(resolveProjectRoot(import.meta.url));
+    return existsSync(cand) ? cand : null;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 function compilePattern(entry: string): RegExp {
@@ -47,7 +47,7 @@ function main(): void {
     process.stderr.write(`file not found: ${filePath}\n`);
     process.exit(1);
   }
-  const catalogPath = findCatalog(filePath);
+  const catalogPath = findCatalog();
   if (!catalogPath) {
     process.stderr.write("no-step-catalog\n");
     process.exit(127); // advisory pass — no oracle available

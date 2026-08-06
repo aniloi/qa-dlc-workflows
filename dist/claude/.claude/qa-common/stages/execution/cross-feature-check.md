@@ -61,7 +61,7 @@ from AI-remembered prose into a repeatable check across the written suite.
 
 ## Learn
 
-Diary at `aidlc-docs/.qadlc-memory/cross-feature-check/memory.md`. A class of
+Diary at `.qadlc/diaries/cross-feature-check/memory.md`. A class of
 consistency problem you keep catching by hand is a candidate for a new sensor
 (author a manifest under `.claude/sensors/` and add its id to this
 stage's `sensors:` list per `stage-protocol.md` §Learn).

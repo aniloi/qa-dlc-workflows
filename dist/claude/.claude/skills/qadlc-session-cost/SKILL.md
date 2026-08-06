@@ -11,9 +11,9 @@ and the audit trail; it never mutates anything.
 ## What to do
 
 1. Read state: `bun .claude/tools/qadlc-state.ts show`.
-2. Read the audit trail at `aidlc-docs/audit.md` and count event types
+2. Read the audit trail at `.qadlc/audit.md` and count event types
    (STAGE_COMPLETED, FEATURE_FILE_WRITTEN, SENSOR_FAILED, GATE_VIOLATION).
-3. List any sensor detail files under `aidlc-docs/.qadlc-sensors/`.
+3. List any sensor detail files under `.qadlc/sensors/`.
 4. Present a compact report:
 
 ```

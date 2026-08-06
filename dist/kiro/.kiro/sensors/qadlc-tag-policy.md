@@ -24,5 +24,5 @@ is optional and is treated as a component tag if present.
 ## Failure mode
 
 Emits `SENSOR_FAILED` and writes detail to
-`aidlc-docs/.qadlc-sensors/<stage>/tag-policy-<ts>.md` naming each scenario
+`.qadlc/sensors/<stage>/tag-policy-<ts>.md` naming each scenario
 missing a required tag class.

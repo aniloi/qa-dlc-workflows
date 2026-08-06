@@ -1,7 +1,9 @@
 # QADLC session artifacts (optional — commit if you want audit history)
-aidlc-docs/qa-state.md
-aidlc-docs/audit.md
-aidlc-docs/.qadlc-sensors/
+.qadlc/qa-state.md
+.qadlc/audit.md
+.qadlc/sensors/
+.qadlc/diaries/
+.qadlc/step-catalog.json
 
 # Machine-local
 .claude/settings.local.json
@@ -10,3 +12,6 @@ aidlc-docs/.qadlc-sensors/
 # Commit these — they are the deliverables
 # gherkin_plan.md
 # **/*.feature
+
+# Hand-authored, commit them — your team's standing QADLC conventions
+# .qadlc/memory/

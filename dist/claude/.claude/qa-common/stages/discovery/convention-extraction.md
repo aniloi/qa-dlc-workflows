@@ -59,7 +59,7 @@ None bound. Convention Extraction produces notes.
 
 ## Learn
 
-Diary at `aidlc-docs/.qadlc-memory/convention-extraction/memory.md`. A stable,
+Diary at `.qadlc/diaries/convention-extraction/memory.md`. A stable,
 repeated convention (e.g. "every API scenario is tagged `@api`") is a strong
 candidate to promote into team memory so future runs load it instead of
 re-deriving it.

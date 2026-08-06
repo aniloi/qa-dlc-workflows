@@ -20,5 +20,5 @@ scenario names within the file.
 ## Failure mode
 
 Emits `SENSOR_FAILED` and writes detail to
-`aidlc-docs/.qadlc-sensors/<stage>/gherkin-lint-<ts>.md` listing each finding
+`.qadlc/sensors/<stage>/gherkin-lint-<ts>.md` listing each finding
 (line, rule, message). Advisory — surfaced at the next gate, never blocks.
