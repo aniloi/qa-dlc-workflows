@@ -478,6 +478,38 @@ cannot is worse than a project-local file. Revisit only if cross-project health
 aggregation becomes a requirement, and then via an explicit resolver rather than
 the env var.
 
+### 7.6 Found while packaging: the `/qadlc` skill frontmatter has never parsed
+
+`claude plugin validate` rejected the new plugin's `SKILL.md`:
+
+> `frontmatter: YAML frontmatter failed to parse … At runtime this skill loads
+> with empty metadata (all frontmatter fields silently dropped).`
+
+Checking the other targets showed the same failure in
+`harness/claude/skills/qadlc/SKILL.md` **and** `harness/kiro/skills/qadlc/SKILL.md`
+— shipped, at v2.0.0. The cause is one unquoted scalar:
+
+```yaml
+description: … deterministic engine-driven. Supports flags: --resume, …
+```
+
+A plain YAML scalar cannot contain `": "`. So `name:` and `description:` were both
+being dropped at load time. The skill still resolved by directory basename, which
+is why nobody noticed — but the `description` is the **entire trigger surface**,
+so the model was matching `/qadlc` on an empty description. Fixed in all three
+targets by single-quoting and replacing the inner colon with an em dash.
+
+Two things worth taking from this beyond the fix:
+
+- The vendored targets had no equivalent gate. `bun scripts/package.ts --check`
+  guards *drift* between `core/` and `dist/`, not *validity* of what is shipped.
+  `claude plugin validate --strict` is the first tool in this repo that reads the
+  frontmatter at all, and it found a live bug within a minute of being pointed at
+  the tree. It now runs as a test (skipping cleanly if the CLI is absent) and as
+  `bun run plugin:validate`.
+- It is an argument for the plugin target beyond distribution: it subjects the
+  shared `core/` surfaces to a schema checker the vendored path never had.
+
 ## 8. v1 and vendored coexistence
 
 ### 8.1 Namespace runtime artifacts
@@ -645,12 +677,18 @@ The packager already bakes `VERSION` into `harness.json`. If it also writes
 silently never receive updates — the worst failure mode for a tool being actively
 developed.
 
-- **During development:** omit `version` from `plugin.json`. Every commit is a new
-  version. `harness.json` keeps carrying `VERSION` for `qadlc --version`.
-- **At release:** write `version`, and add the bump to a release checklist.
+**Decided the other way in Phase 3, and the reason matters.** `plugin.json` now
+carries `version` from the `VERSION` file, from the start. Omitting it costs
+`claude plugin validate --strict`, which warns on a missing version — and §7.6 is
+the argument for keeping that gate: it caught a shipped bug the moment it was
+wired up. Local development uses `--plugin-dir`, which bypasses versioning
+entirely, so the every-commit-is-an-update convenience would only have applied to
+teammates installing from the marketplace mid-development, a narrow window.
 
-Never set it in both `plugin.json` and the marketplace entry — `plugin.json`
-always wins, silently.
+The trap is therefore live and must be handled by process: **bumping `VERSION` is
+a release step.** Push commits without bumping it and existing users receive
+nothing, silently. Never set `version` in both `plugin.json` and the marketplace
+entry either — `plugin.json` wins, silently.
 
 ### 9.3 Governance: the org move has a technical trigger now
 
@@ -684,7 +722,7 @@ green (`bun scripts/package.ts --check`).
 | **0. Guards** ✅ | `tests/coexistence.test.ts`: v1-safety property (§8.1), a path inventory of today's artifact locations, `$CLAUDE_PROJECT_DIR` precedence. Fixed the two missing hook guards the tests exposed | **Done.** `bun run check` green: typecheck, no drift, 47 pass / 3 skip |
 | **1. Path resolution** ✅ | §4 in full: three roots, `projectRootFromTool` and `resolveProjectDirFromHook` deleted, `resolveProjectRoot()` + `…OrExit()` + guardrail, `mode`/`entryCmd` in `harness.json`, `orchestrateCmd()` reads `entryCmd`, `hooksHealthDir` → `.qadlc/health/`, heartbeat moved after the guards, `hookHarnessDirName` deleted | **Done.** `bun run check` green: no drift, 53 pass / 1 skip. Vendored `orchestrateCmd` output byte-identical; `--doctor` now reports mode + both roots |
 | **2. Namespacing** ✅ | §8.1 `.qadlc/` move (state, audit, sensors, diaries, step catalog), refuse-not-clobber in `writeState`, both `.gitignore`s, `core/tools/qadlc-migrate.ts` with `--dry-run`, 30 prose paths rewritten, the step-existence sensor's bespoke walk-up folded into the shared resolver | **Done.** `bun run check` green: no drift, 60 pass / 0 skip. Migration verified against mixed v1+v2+`inception/` fixtures; a migrated session resumes correctly |
-| **3. Plugin target** | §7: `harness/plugin/`, `emit()`, `bin/qadlc`, `hooks/hooks.json`, exec bit + mode checking in `--check` | `claude plugin validate ./dist/plugin --strict` passes; **plan-gate test (§7.3) passes against a plugin install** |
+| **3. Plugin target** ✅ | §7: `harness/plugin/` (manifest, `emit`, `bin-qadlc.ts`, SKILL.md, INSTALL.md), `plugin.json` + `hooks/hooks.json` + `bin/qadlc` @ 0o755, `core/tools/qadlc-init.ts`, mode comparison in `--check`, memory shipped as `templates/memory/` | **Done.** `claude plugin validate --strict` passes (exit 0; verified it exits 1 on a broken tree); plan gate blocks under a plugin install; `bun run check` green across 3 targets, 71 pass. **Not verified: a live `claude --plugin-dir` session** — see §11 |
 | **4. Docs/token** | §6: `{{QADLC_CMD}}`, `{{PROJECT_MEMORY_DIR}}`, engine paths out of prose, `SKILL.md` absorbs `rules-qadlc.md`, fix the `.ts` token | Packager asserts no surviving `{{HARNESS_DIR}}` in the plugin target; `core/` prose byte-identical across targets |
 | **5. Coexistence** | §8.2 cede-to-vendored, §8.3 trigger narrowing, `SessionStart` notice | Manual test: plugin installed + vendored tree present → each hook fires exactly once |
 | **6. Publish** | §9.1 `marketplace.json`, install/upgrade docs, perf work from §7.2 | A teammate installs from a clean machine following only the written steps |
@@ -698,6 +736,8 @@ to the install tree.
 
 | Risk | Handling |
 |---|---|
+| **No live-session verification yet.** Everything about the plugin is checked structurally (validator, exec bit, hooks.json shape, plan gate via direct hook invocation) but no test confirms Claude Code actually *registers* the skill, puts `bin/` on the Bash PATH, and fires `hooks/hooks.json` in a real session | Run `claude --plugin-dir ./dist/plugin` by hand in a scratch repo and check: `/qadlc` appears, `qadlc --version` works as a bare command, and an edit produces an audit entry. A nested `claude -p` could not authenticate from inside the authoring session, so this is the one Phase 3 claim resting on documentation rather than observation |
+| `if`-narrowed hook matchers not shipped | Deliberate. `hooks.json` mirrors `settings.json`'s matcher exactly; the `if` pass is Phase 6 where it can be measured. A non-matching `if` would silently stop the audit-logger and sensors, which is worse than being slow |
 | `harnessDir: ""` interacting badly with the orphan scan | Checked — `join`/`relative` behave correctly (§7.1). Residual risk is the token-substitution trap, covered by the Phase 4 assertion |
 | Whether `if` can express a tool-agnostic rule (docs only show tool-scoped forms like `Edit(*.ts)`) | Assume tool-scoped; generate per-matcher groups. The §7.2 heartbeat fix is the unconditional win |
 | Exec bit survival through the plugin cache copy | Assert in the Phase 3 install test, not by inspection |

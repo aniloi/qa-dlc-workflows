@@ -1,6 +1,6 @@
 ---
 name: qadlc
-description: QADLC Gherkin feature-file workflow. Trigger on "Using QADLC", or on keywords BDD, Gherkin, feature file. Plan-first, two-phase, deterministic engine-driven. Supports flags: --resume, --scope, --depth, --stage, --phase, --doctor, --version.
+description: 'QADLC Gherkin feature-file workflow. Trigger on "Using QADLC", or on keywords BDD, Gherkin, feature file. Plan-first, two-phase, deterministic engine-driven. Supported flags — --resume, --scope, --depth, --stage, --phase, --doctor, --version.'
 ---
 
 # QADLC Conductor (Kiro)

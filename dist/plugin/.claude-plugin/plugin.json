@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "qadlc",
+  "displayName": "QADLC",
+  "description": "Plan-first Gherkin/BDD feature-file workflow driven by a deterministic engine. Stages, scopes, sensors and a plan-approval gate; team conventions stay in your repo.",
+  "author": {
+    "name": "aniloi"
+  },
+  "repository": "https://github.com/aniloi/qa-dlc-workflows",
+  "homepage": "https://github.com/aniloi/qa-dlc-workflows",
+  "license": "MIT",
+  "keywords": [
+    "qa",
+    "bdd",
+    "gherkin",
+    "cucumber",
+    "testing",
+    "test-automation"
+  ],
+  "version": "2.0.0"
+}

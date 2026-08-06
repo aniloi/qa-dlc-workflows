@@ -258,6 +258,17 @@ function checkHarness(m: HarnessManifest): string[] {
       const a = readFileSync(join(tmp, rel));
       const b = readFileSync(committedPath);
       if (!a.equals(b)) problems.push(`DIFFERS: dist/${m.name}/${rel}`);
+      // Modes matter, not just bytes: bin/qadlc is useless without its exec bit,
+      // and writeFileSync does not set one. A chmod lost in emit() would ship a
+      // plugin whose entry point cannot run, and a byte-only diff would call it
+      // clean.
+      const modeA = statSync(join(tmp, rel)).mode & 0o777;
+      const modeB = statSync(committedPath).mode & 0o777;
+      if (modeA !== modeB) {
+        problems.push(
+          `MODE DIFFERS: dist/${m.name}/${rel} (${modeB.toString(8)} != ${modeA.toString(8)})`,
+        );
+      }
     }
 
     // Orphan scan against the committed tree.

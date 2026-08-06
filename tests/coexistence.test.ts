@@ -21,7 +21,7 @@
 // plugin must cede to is a vendored .claude/, so that is the collision surface.
 
 import { describe, expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -456,5 +456,153 @@ describe("migration from aidlc-docs/", () => {
     writeFileSync(join(stale, "audit-logger.last"), "2026-01-01T00:00:00Z", "utf-8");
     expect(migrate(p).status).toBe(0);
     expect(existsSync(stale)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. The plugin target (Phase 3)
+// ---------------------------------------------------------------------------
+const DIST_PLUGIN = join(REPO, "dist", "plugin");
+
+describe("plugin target", () => {
+  /** A plugin install: engine tree OUTSIDE the project, reached via bin/qadlc. */
+  function install(): { proj: string; engine: string } {
+    // realpathSync: on macOS mkdtemp hands back /var/... while the child process
+    // sees /private/var/..., and doctor reports what the engine actually resolved.
+    const engine = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-plug-")));
+    cpSync(DIST_PLUGIN, engine, { recursive: true, preserveTimestamps: true });
+    // cpSync preserves mode, but assert rather than assume — see the exec-bit test.
+    const proj = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-pproj-")));
+    mkdirSync(join(proj, ".git"), { recursive: true });
+    mkdirSync(join(proj, "features"), { recursive: true });
+    return { proj, engine };
+  }
+  const qadlc = (e: string) => join(e, "bin", "qadlc");
+  function runQadlc(engine: string, proj: string, args: string[], input?: string) {
+    const r = spawnSync(qadlc(engine), args, {
+      cwd: proj,
+      encoding: "utf-8",
+      input,
+      env: withoutProjectEnv(),
+    });
+    return { out: r.stdout ?? "", err: r.stderr ?? "", code: r.status ?? 0 };
+  }
+
+  test("bin/qadlc is executable and runs as a bare command", () => {
+    const { proj, engine } = install();
+    expect(statSync(qadlc(engine)).mode & 0o111).not.toBe(0);
+    const r = runQadlc(engine, proj, ["--version"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("QADLC");
+  });
+
+  test("the engine resolves the PROJECT, never the plugin dir", () => {
+    const { proj, engine } = install();
+    expect(runQadlc(engine, proj, ["report", "--scope", "smoke"]).code).toBe(0);
+    expect(existsSync(join(proj, ".qadlc", "qa-state.md"))).toBe(true);
+    // nothing written into the install tree
+    expect(existsSync(join(engine, ".qadlc"))).toBe(false);
+    expect(existsSync(join(engine, "aidlc-docs"))).toBe(false);
+  });
+
+  test("doctor reports plugin mode and both roots", () => {
+    const { proj, engine } = install();
+    const d = JSON.parse(runQadlc(engine, proj, ["doctor"]).out);
+    expect(d.message).toContain("install mode: plugin");
+    expect(d.message).toContain(`project root: ${proj}`);
+    expect(d.message).toContain(`engine root: ${engine}`);
+  });
+
+  test("emitted commands name `qadlc`, not a path into the plugin cache", () => {
+    const { proj, engine } = install();
+    const d = JSON.parse(runQadlc(engine, proj, ["next", "--scope", "smoke"]).out);
+    expect(d.command).toBe("qadlc report --scope smoke");
+    expect(d.command).not.toContain(engine);
+  });
+
+  // §7.3: the Stop hook is the only ENFORCING hook. A QADLC user who silently
+  // loses it is worse off than one who never installed. This is the phase gate.
+  test("the plan gate still blocks under a plugin install", () => {
+    const { proj, engine } = install();
+    runQadlc(engine, proj, ["report", "--scope", "smoke"]);
+    writeFileSync(join(proj, "features", "x.feature"), FEATURE, "utf-8");
+    // the audit-logger records the artifact, as the real PostToolUse hook would
+    const logger = spawnSync("bun", [join(engine, "hooks", "qadlc-audit-logger.ts")], {
+      cwd: proj,
+      input: JSON.stringify(writeEvent(proj, "features/x.feature")),
+      env: { ...withoutProjectEnv(), CLAUDE_PROJECT_DIR: proj },
+    });
+    expect(logger.status).toBe(0);
+    const stop = spawnSync("bun", [join(engine, "hooks", "qadlc-stop.ts")], {
+      cwd: proj,
+      encoding: "utf-8",
+      input: "{}",
+      env: { ...withoutProjectEnv(), CLAUDE_PROJECT_DIR: proj },
+    });
+    expect(stop.stdout ?? "").toContain('"decision":"block"');
+  });
+
+  test("qadlc init materializes project memory and never overwrites it", () => {
+    const { proj, engine } = install();
+    expect(runQadlc(engine, proj, ["init"]).code).toBe(0);
+    const team = join(proj, ".qadlc", "memory", "team.md");
+    expect(existsSync(team)).toBe(true);
+    expect(existsSync(join(proj, ".qadlc", "memory", "project.md"))).toBe(true);
+    // a hand-edited memory file survives a re-run, with and without --force
+    writeFileSync(team, "MINE\n", "utf-8");
+    expect(runQadlc(engine, proj, ["init"]).out).toContain("kept");
+    expect(readFileSync(team, "utf-8")).toBe("MINE\n");
+    expect(runQadlc(engine, proj, ["init", "--force"]).out).toContain("REFUSED");
+    expect(readFileSync(team, "utf-8")).toBe("MINE\n");
+  });
+
+  test("memory ships as a template, not as engine content", () => {
+    // The plugin/project split: machinery in the plugin, vocabulary in the repo.
+    expect(existsSync(join(DIST_PLUGIN, "templates", "memory", "team.md"))).toBe(true);
+    expect(existsSync(join(DIST_PLUGIN, "memory"))).toBe(false);
+  });
+
+  test("hooks.json uses exec form and the plugin-root placeholder", () => {
+    const cfg = JSON.parse(readFileSync(join(DIST_PLUGIN, "hooks", "hooks.json"), "utf-8"));
+    const handlers = Object.values(cfg.hooks)
+      .flat()
+      .flatMap((g: any) => g.hooks as any[]);
+    expect(handlers.length).toBeGreaterThan(0);
+    for (const h of handlers) {
+      expect(h.command).toBe("bun");
+      expect(Array.isArray(h.args)).toBe(true);
+      expect(h.args[0]).toStartWith("${CLAUDE_PLUGIN_ROOT}/hooks/");
+      expect(typeof h.timeout).toBe("number");
+    }
+    // every event the vendored settings.json wires must survive the move
+    expect(Object.keys(cfg.hooks).sort()).toEqual([
+      "PostToolUse", "SessionEnd", "SessionStart", "Stop",
+    ]);
+  });
+
+  test("ships no settings.json and no rules/ stub", () => {
+    // Plugin settings.json supports only `agent`/`subagentStatusLine`, and a
+    // plugin cannot contribute ambient rules context at all.
+    expect(existsSync(join(DIST_PLUGIN, "settings.json"))).toBe(false);
+    expect(existsSync(join(DIST_PLUGIN, "rules"))).toBe(false);
+  });
+
+  test("plugin agents declare no field a plugin forbids", () => {
+    // hooks / mcpServers / permissionMode are rejected for plugin-shipped agents.
+    for (const f of readdirSync(join(DIST_PLUGIN, "agents"))) {
+      const fm = readFileSync(join(DIST_PLUGIN, "agents", f), "utf-8").split("---")[1] ?? "";
+      for (const banned of ["hooks:", "mcpServers:", "permissionMode:"]) {
+        expect(fm).not.toContain(banned);
+      }
+    }
+  });
+
+  test("claude plugin validate --strict passes", () => {
+    const r = spawnSync("claude", ["plugin", "validate", DIST_PLUGIN, "--strict"], {
+      encoding: "utf-8",
+    });
+    if (r.error) return; // CLI unavailable in this environment — skip silently
+    expect(r.stdout ?? "").toContain("Validation passed");
+    expect(r.status).toBe(0);
   });
 });
