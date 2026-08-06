@@ -974,3 +974,60 @@ describe("marketplace", () => {
     expect(r.status).toBe(0);
   }, 60_000);
 });
+
+// ---------------------------------------------------------------------------
+// 9. Stop-hook contract (found by live-session testing)
+// ---------------------------------------------------------------------------
+describe("stop hook: block once, stay escapable", () => {
+  function violated(): string {
+    // A session with a .feature recorded before the plan was approved.
+    const p = v2Project();
+    const env = { ...process.env, CLAUDE_PROJECT_DIR: p };
+    writeFileSync(join(p, "features", "x.feature"), FEATURE, "utf-8");
+    spawnSync("bun", [hook(p, "qadlc-audit-logger.ts")], {
+      cwd: p, env, input: JSON.stringify(writeEvent(p, "features/x.feature")),
+    });
+    return p;
+  }
+  const stop = (p: string, input: string) =>
+    spawnSync("bun", [hook(p, "qadlc-stop.ts")], {
+      cwd: p, env: { ...process.env, CLAUDE_PROJECT_DIR: p }, input, encoding: "utf-8",
+    }).stdout ?? "";
+
+  test("blocks on the first stop of a turn", () => {
+    expect(stop(violated(), "{}")).toContain('"decision":"block"');
+  });
+
+  test("allows the stop when stop_hook_active is true", () => {
+    // The platform contract. Without this the hook re-blocks every turn-end until
+    // Claude Code force-overrides it — observed live at nine consecutive blocks.
+    expect(stop(violated(), '{"stop_hook_active":true}')).toBe("");
+  });
+
+  test("approving the plan CLEARS the gate", () => {
+    // The remedy the block message advertises must actually work. It did not:
+    // the ordering check kept blocking after approval, so the only escape left
+    // was to report an approval the human never gave.
+    const p = violated();
+    expect(stop(p, "{}")).toContain('"decision":"block"');
+    spawnSync("bun", [tool(p, "qadlc-orchestrate.ts"),
+      "report", "--stage", "gherkin-plan", "--approved", "--feature-count", "1"], { cwd: p });
+    const after = stop(p, "{}");
+    expect(after).not.toContain('"decision":"block"');
+    expect(after).toContain("plan-gate notice"); // still recorded, just not blocking
+  });
+
+  test("a violation is recorded once, not once per turn-end", () => {
+    // The audit is append-only, so an unguarded append writes an identical row
+    // every time the turn ends while the condition persists.
+    const p = violated();
+    for (let i = 0; i < 5; i++) stop(p, "{}");
+    const rows = (readFileSync(join(p, ".qadlc", "audit.md"), "utf-8").match(/## GATE_VIOLATION/g) ?? []).length;
+    expect(rows).toBe(1);
+  });
+
+  test("a clean session is never blocked", () => {
+    const p = v2Project();
+    expect(stop(p, "{}")).toBe("");
+  });
+});

@@ -380,6 +380,12 @@ export interface ClaudeCodeHookInput {
   tool_input?: { file_path?: string; [k: string]: unknown };
   hook_event_name?: string;
   cwd?: string;
+  /**
+   * Stop-hook only. True when a Stop hook is already running or recently returned
+   * `decision: "block"`. Blocking again while it is true is what creates the
+   * infinite retry loop the platform force-overrides after a few passes.
+   */
+  stop_hook_active?: boolean;
 }
 
 export function isClaudeCodeHookInput(x: unknown): x is ClaudeCodeHookInput {

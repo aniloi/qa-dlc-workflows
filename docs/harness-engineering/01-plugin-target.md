@@ -919,7 +919,60 @@ Run by hand: `claude --plugin-dir ./dist/plugin` in a scratch directory.
 `entryCmd: "qadlc"` and the whole §6.2 token rewrite would have needed rethinking
 in favour of engine-emitted absolute paths.
 
-**Still open — and the session-less test cannot close it.** With no active session,
+### 11.2 Hooks fire — confirmed, and two defects found doing it
+
+The active-session test closed the last Phase 3 gap and found two real bugs in the
+one hook that matters most.
+
+**Confirmed live**, with a session started and a `.feature` written before approval:
+
+| Claim | Evidence |
+|---|---|
+| `PostToolUse` fires from `hooks/hooks.json` | `ARTIFACT_CREATED` appended to `.qadlc/audit.md` |
+| The sensor dispatcher fires | three sensor events recorded, including a `tag-policy` failure with 2 findings |
+| The `Stop` hook fires and blocks | plan-gate block, repeatedly |
+| §6.2's `entryCommand()` rewrite works | the block message reads `qadlc report --stage gherkin-plan --approved`, not a tool path |
+| Detection is by extension, not directory | a `.feature` written to `scratch/` was caught |
+| Sensors are advisory | `tag-policy` failed and the write still landed — as designed |
+
+**Defect 1 — the hook ignored `stop_hook_active`.** `qadlc-stop.ts` never read its
+stdin at all, so it re-blocked on every turn-end. Observed: nine consecutive
+blocks before Claude Code force-overrode, and an identical `GATE_VIOLATION` row
+appended each time to an append-only trail. The platform contract is explicit:
+
+> "if your hook sees `"stop_hook_active": true`, it should either allow the stop
+> or take a different action such as logging, rather than blocking again."
+
+**Defect 2 — the advertised remedy did not work, which is the serious one.** The
+block message tells you to approve the plan. Doing exactly that did **not** clear
+the gate: the second check (`featureBeforeApproval`) stays true forever once a
+feature precedes approval in the trail, so it kept blocking after approval.
+
+That combination left a session with no honest exit, and it pointed the way out at
+the one action that must never be automated — reporting an approval the human
+never gave. A gate whose only escape is forging its own precondition is worse than
+no gate, because it manufactures pressure to fake the evidence. The ordering check
+is now **advisory**: it records the anomaly and lets work continue, since by the
+time it is reachable the plan genuinely is approved.
+
+Both defects are **pre-existing in vendored v2.0.0**, not introduced by the plugin
+work. Neither was reachable by the existing tests, because both need a *sequence*
+of turn-ends to manifest. Five regression tests now cover block-once, the
+`stop_hook_active` contract, gate clearing after approval, single-row recording,
+and a clean session never blocking.
+
+**Still open** (recommendations from the live test, not yet built):
+
+- `report --stage gherkin-plan --approved` is self-supplyable by the agent. Gating
+  it behind something an agent cannot forge is a design question worth its own
+  issue.
+- There is no `qadlc abort`. A botched session has no clean reset short of
+  `rm -rf .qadlc`.
+- The gate is detective, not preventive: the file lands and the audit row commits
+  before anything blocks. A `PreToolUse` hook would prevent instead — a real
+  change in character, worth deciding deliberately.
+
+**Superseded — the note below applied to the session-less test only.** With no active session,
 the audit-logger's state guard exits 0, so "the hook fired and correctly no-op'd"
 and "the hook never fired" produce identical observations: no audit entry, no
 `.qadlc/`. Distinguishing them needs an **active** session, where a `.feature`

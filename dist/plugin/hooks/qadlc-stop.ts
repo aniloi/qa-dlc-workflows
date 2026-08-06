@@ -18,6 +18,7 @@ import {
   engineRootFromTool,
   entryCommand,
   errorMessage,
+  isClaudeCodeHookInput,
   planPath,
   recordHookDrop,
   resolveProjectRootOrExit,
@@ -38,6 +39,34 @@ function block(reason: string): never {
   process.exit(0);
 }
 
+// THE STOP-HOOK CONTRACT. `stop_hook_active` is true when a Stop hook is already
+// running or has recently blocked. The platform requires that we allow the stop in
+// that case:
+//
+//   "if your hook sees "stop_hook_active": true, it should either allow the stop
+//    or take a different action such as logging, rather than blocking again."
+//
+// This hook previously never read its stdin at all, so it re-blocked on every
+// turn-end until Claude Code force-overrode it. Observed live: nine consecutive
+// blocks, nine identical GATE_VIOLATION rows appended to an append-only trail, and
+// a session with no clean exit — because the gate condition (a .feature exists
+// before approval) is permanent once true, so re-evaluating it always re-blocks.
+//
+// The pressure that creates is the real damage: the only advertised remedy is
+// `report --stage gherkin-plan --approved`, so an agent optimizing for a completed
+// turn is pushed toward fabricating a human approval in the audit trail. Blocking
+// ONCE states the violation; blocking forever corrupts the incentive.
+let stopHookActive = false;
+if (!process.stdin.isTTY) {
+  try {
+    const raw: unknown = JSON.parse(await Bun.stdin.text());
+    if (isClaudeCodeHookInput(raw)) stopHookActive = raw.stop_hook_active === true;
+  } catch {
+    /* no or unparseable input — treat as a first stop attempt */
+  }
+}
+if (stopHookActive) process.exit(0);
+
 try {
   const state = readState(projectDir);
   if (!state || !state.scope) process.exit(0); // no active session
@@ -54,11 +83,16 @@ try {
   const featureBeforeApproval =
     featureCreatedIdx >= 0 && (approvedIdx < 0 || featureCreatedIdx < approvedIdx);
 
+  // Record a violation at most ONCE per session. The gate condition is permanent
+  // (an ARTIFACT_CREATED row can never be withdrawn from an append-only trail), so
+  // an unguarded append writes an identical row on every turn-end.
+  const recordViolation = (detail: string): void => {
+    if (audit.includes(`**Detail**: ${detail}`)) return;
+    appendAuditEntry("GATE_VIOLATION", { Gate: "plan-approval", Detail: detail }, projectDir);
+  };
+
   if (!planApproved && (featureCreatedIdx >= 0 || state.feature_files_written > 0)) {
-    appendAuditEntry("GATE_VIOLATION", {
-      Gate: "plan-approval",
-      Detail: "a .feature was created before gherkin_plan.md was approved",
-    }, projectDir);
+    recordViolation("a .feature was created before gherkin_plan.md was approved");
     block(
       "QADLC plan gate: a .feature file was created before the Gherkin Plan was " +
         "approved. Present gherkin_plan.md, get explicit approval, and report it " +
@@ -66,9 +100,24 @@ try {
         "writing feature files.",
     );
   }
+
+  // ORDERING ANOMALY — advisory, never blocking.
+  //
+  // This is only reachable once the plan IS approved (the check above owns the
+  // unapproved case), so it means "a feature was written, and the plan was
+  // approved afterwards". That is worth recording, but it must not block: the
+  // condition is permanent and unfixable, because the fix the gate advertises —
+  // approve the plan — is the very thing that got us here. Blocking left the
+  // session with NO honest exit, and the only advertised escape was for the agent
+  // to report an approval the human never gave. A gate that can only be cleared by
+  // forging its own precondition is worse than no gate.
   if (featureBeforeApproval) {
-    appendAuditEntry("GATE_VIOLATION", { Gate: "plan-approval", Detail: "feature artifact precedes approval in audit order" }, projectDir);
-    block("QADLC plan gate: a feature file appears in the audit before plan approval. Review the order of operations.");
+    recordViolation("feature artifact precedes approval in audit order");
+    process.stdout.write(
+      "QADLC plan-gate notice: a feature file appears in the audit before plan " +
+        "approval. The plan is approved now, so work continues — but the ordering " +
+        "is recorded in the audit trail.\n",
+    );
   }
 
   // --- 2. Checkbox discipline (advisory) ---
