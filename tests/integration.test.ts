@@ -3,7 +3,7 @@
 // sensors, the stop-hook enforcement, and the packaging drift guard.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -275,6 +275,58 @@ describe("flag surface (/qadlc forwarded to next)", () => {
     const combo = JSON.parse(runIn(p, ["next", "--stage", "x", "--phase", "discovery"]).out);
     expect(combo.message).toContain("together");
     rmSync(p, { recursive: true, force: true });
+  });
+});
+
+describe("bun preflight", () => {
+  // A PATH with no bun on it, to simulate the machine this guard exists for.
+  // /bin and /usr/bin carry sh and the coreutils the script uses, never bun.
+  const NO_BUN = { ...process.env, PATH: "/usr/bin:/bin" };
+  const sh = (args: string[], env: typeof process.env) =>
+    spawnSync("sh", [tool("qadlc-preflight.sh"), ...args], { encoding: "utf-8", cwd: proj, env });
+
+  test("ships into every harness tree", () => {
+    for (const h of ["claude", "kiro"] as const) {
+      expect(existsSync(join(REPO, "dist", h, `.${h}`, "tools", "qadlc-preflight.sh"))).toBe(true);
+    }
+  });
+
+  test("passes silently when bun is on PATH", () => {
+    const r = sh([], process.env);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
+  test("execs through to the wrapped command when bun is present", () => {
+    const r = sh(["bun", "--version"], process.env);
+    expect(r.status).toBe(0);
+    expect(r.stdout.trim()).toMatch(/^\d+\.\d+/);
+  });
+
+  test("fails loudly when bun is missing", () => {
+    const r = sh([], NO_BUN);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toContain("QADLC PREFLIGHT FAILED");
+    // The message must name the silent-degradation trap, not just the missing
+    // binary — the whole point is stopping the conductor from carrying on.
+    expect(r.stdout).toContain("fails OPEN");
+    expect(r.stdout).toContain("DO NOT run the QADLC workflow from the stage markdown");
+  });
+
+  test("--advisory reports a missing bun without failing the hook", () => {
+    const r = sh(["--advisory", "bun", "--version"], NO_BUN);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("QADLC PREFLIGHT FAILED");
+  });
+
+  test("the SessionStart hook is wired through it", () => {
+    const settings = JSON.parse(
+      readFileSync(join(REPO, "dist", "claude", ".claude", "settings.json"), "utf-8"),
+    );
+    const cmd = settings.hooks.SessionStart[0].hooks[0].command;
+    expect(cmd).toBe(
+      "sh .claude/tools/qadlc-preflight.sh --advisory bun .claude/hooks/qadlc-session-start.ts",
+    );
   });
 });
 

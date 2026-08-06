@@ -24,7 +24,33 @@ You can also pass flags after the trigger — forwarded to the engine unchanged:
 `--resume` (resume a session), `--scope <name>` / `--depth <level>`,
 `--stage <slug>` / `--phase <name>` (jump the pointer), `--doctor`, `--version`.
 
+## Requirements
+
+QADLC's engine, hooks, and sensors all run on **[bun](https://bun.sh)**. Install
+it before anything else — without it the workflow does not degrade gracefully,
+it degrades *silently*: the engine cannot route, and the stop hook that enforces
+the plan-approval gate fails open.
+
+```bash
+curl -fsSL https://bun.sh/install | bash   # or: brew install oven-sh/bun/bun
+```
+
 {{SLOT:install}}
+
+## Verify the runtime
+
+```bash
+sh {{HARNESS_DIR}}/tools/qadlc-preflight.sh
+```
+
+The one QADLC command that does not itself need bun. Silent exit 0 means you are
+ready; anything else prints what to fix.
+
+Note that bun must be on PATH for **non-interactive** shells — that is where
+hooks and tool calls run. If `bun --version` works in your terminal but the
+preflight fails, a version manager (fnm, asdf, nvm, mise) is putting bun on PATH
+from your shell rc file only, which non-interactive shells never read. Symlink
+it somewhere global: `sudo ln -s "$(command -v bun)" /usr/local/bin/bun`.
 
 ## What it does
 

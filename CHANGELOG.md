@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- **bun preflight (`tools/qadlc-preflight.sh`)** — a plain POSIX `sh` runtime
+  gate, the one QADLC entry point that does not itself need bun and can
+  therefore report bun missing. The conductor runs it before its first `next`
+  and **stops** the session if it fails; Claude Code's `SessionStart` hook runs
+  through it (`--advisory`), so a bun-less project explains itself once per
+  session instead of emitting four bare `command not found` errors. Closes a
+  silent-degradation hole: without bun every hook exited 127, which the harness
+  treats as a non-blocking error, so the stop hook's plan-approval gate failed
+  **open** while the conductor still held enough markdown to improvise
+  ungated `.feature` files. `--doctor` cannot cover this case — it runs on bun.
+- **Requirements + Verify sections** in the onboarding skeleton, so the bun
+  prerequisite reaches the user's project (`QA-CLAUDE.md` / `QA-AGENTS.md`)
+  rather than living only in the repo README. Both call out the
+  non-interactive-shell PATH case, where `bun --version` works in the user's
+  terminal but hooks and tool calls still cannot find it.
 - **`/qadlc` flag surface** — the conductor forwards everything after `/qadlc` to
   the engine's `next` unchanged: `--resume` (resume with a choice menu),
   `--scope <name>` / `--depth <level>` (set or, mid-flight, change scope and
