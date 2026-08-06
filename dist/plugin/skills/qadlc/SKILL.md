@@ -69,11 +69,30 @@ before the named command silently skips the move.
 
 ## If this project has a vendored QADLC
 
-If you see a `.claude/hooks/qadlc-*.ts` tree, this project vendors its own copy
-of QADLC and that copy is authoritative. Use its commands
-(`bun .claude/tools/qadlc.ts …`), not `qadlc`, and tell the user the
-project should remove the vendored tree and run `qadlc migrate` to switch over.
+If you see a `.claude/hooks/qadlc-*.ts` tree, this project vendors its own copy of
+QADLC and that copy is authoritative. Use its commands
+(`bun .claude/tools/qadlc.ts …`), not `qadlc`.
 
-Say so explicitly rather than proceeding quietly: plugin hooks and vendored
-`settings.json` hooks do not deduplicate against each other, so with both present
-every QADLC hook fires twice per event until the vendored tree is removed.
+The plugin's hooks detect this and stand down, so nothing fires twice — the
+`SessionStart` notice explains the switch-over steps. Relay them rather than
+proceeding quietly, because until the vendored tree is removed the plugin
+contributes nothing here.
+
+## While QADLC v1 is still deployed
+
+v1 (`.qa-dlc-rule-details/` + a v1-form `QA-CLAUDE.md`) is prose-only: it ships no
+hooks, so it cannot conflict on disk, and v2 writes only under `.qadlc/`. The
+overlap is the trigger vocabulary — v1 claims bare "BDD", "Gherkin" and "feature
+file".
+
+<!-- TEMPORARY, tied to plan §8.3 / Phase 7 (v1 retirement).
+     This skill's `description` deliberately does NOT claim bare "BDD" / "Gherkin"
+     / "feature file", so that a user in a v1 repo who types "write me a feature
+     file" is not silently routed into two contradictory playbooks. That is a real
+     loss of discoverability, accepted on purpose while v1 remains committed on
+     main in DriveWealth/qa_automation.
+     WHEN v1 IS REMOVED: widen the description back to the natural keywords. Do
+     not leave this narrowed by neglect. -->
+
+If the user clearly wants BDD work but has not said "QADLC", offer it rather than
+assuming: "this repo has QADLC v2 available — want me to run it?"

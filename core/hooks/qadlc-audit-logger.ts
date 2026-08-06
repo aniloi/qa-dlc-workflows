@@ -14,6 +14,7 @@ import { appendAuditEntry, ensureAudit } from "../tools/qadlc-audit.ts";
 import {
   auditPath,
   stateRoot,
+  engineRootFromTool,
   errorMessage,
   hooksHealthDir,
   isClaudeCodeHookInput,
@@ -21,11 +22,17 @@ import {
   planPath,
   recordHookDrop,
   resolveProjectRootOrExit,
+  shouldCedeToVendored,
   type ClaudeCodeHookInput,
 } from "../tools/qadlc-lib.ts";
 import { readState } from "../tools/qadlc-state.ts";
 
 const projectDir = resolveProjectRootOrExit(import.meta.url);
+
+// Stand down when this project vendors its own QADLC engine. Plugin hooks do not
+// deduplicate against a project's settings.json hooks, so without this every
+// QADLC hook would fire twice per event in a half-migrated repo.
+if (shouldCedeToVendored(engineRootFromTool(import.meta.url), projectDir)) process.exit(0);
 
 if (process.stdin.isTTY) process.exit(0);
 

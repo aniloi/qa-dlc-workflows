@@ -386,6 +386,64 @@ export function isClaudeCodeHookInput(x: unknown): x is ClaudeCodeHookInput {
   return typeof x === "object" && x !== null;
 }
 
+// ---------------------------------------------------------------------------
+// Ceding to a vendored install
+// ---------------------------------------------------------------------------
+
+/** Harness dirs that can hold a vendored QADLC tree. */
+const VENDOR_DIRS = [".claude", ".kiro", ".codex"];
+
+/**
+ * True when this project carries its own vendored QADLC engine.
+ *
+ * Detected by the presence of a qadlc-*.ts HOOK in a harness dir, not by the
+ * tools dir: hooks are what a project's settings.json registers, and hooks are
+ * what would double-fire.
+ */
+export function vendoredInstallPresent(projectRoot: string): boolean {
+  for (const dir of VENDOR_DIRS) {
+    const hooks = join(projectRoot, dir, "hooks");
+    if (!existsSync(hooks)) continue;
+    try {
+      if (readdirSync(hooks).some((f) => f.startsWith("qadlc-") && f.endsWith(".ts"))) return true;
+    } catch {
+      /* unreadable — treat as absent */
+    }
+  }
+  return false;
+}
+
+/** True when QADLC v1 is installed in this project (prose-only: no hooks). */
+export function v1InstallPresent(projectRoot: string): boolean {
+  return existsSync(join(projectRoot, ".qa-dlc-rule-details"));
+}
+
+/**
+ * Should a PLUGIN hook stand down for this project?
+ *
+ * Plugin hooks and a project's own settings.json hooks do NOT deduplicate — not
+ * even byte-identical ones; the platform keeps a plugin's copy separate on
+ * purpose. So with a user-scope plugin installed and a vendored tree still in the
+ * repo, every QADLC hook fires twice per event: duplicate audit entries,
+ * duplicate sensor findings, the plan gate evaluated twice. The vendored copy
+ * wins while it exists, which makes a half-migrated repo behave like a
+ * pre-migration one rather than a doubled one.
+ *
+ * Only plugin-mode hooks cede. A vendored hook obviously must not stand down on
+ * finding its own tree.
+ *
+ * DELIBERATELY NOT EXTENDED TO v1, though an earlier draft of the plan said to.
+ * v1 ships `.qa-dlc-rule-details/` and a QA-CLAUDE.md — prose, no hooks — so it
+ * cannot double-fire anything. Ceding on v1 detection would instead make the
+ * plugin inert in precisely the repo it exists to serve: v1 is committed on
+ * `main` in the target repo, so it is present on every branch. v1's real overlap
+ * with v2 is the TRIGGER, which the skill's description handles.
+ */
+export function shouldCedeToVendored(engineRoot: string, projectRoot: string): boolean {
+  if (harnessData(engineRoot).mode !== "plugin") return false;
+  return vendoredInstallPresent(projectRoot);
+}
+
 /**
  * Record a hook failure to the health dir so a doctor command can surface it.
  * Never throws — a hook must be a no-op on its own failure.

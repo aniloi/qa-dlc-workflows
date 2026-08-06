@@ -659,8 +659,33 @@ for this project. To switch: rm -rf .claude/hooks/qadlc-*.ts .claude/tools
 Then run: qadlc migrate
 ```
 
-The same mechanism answers the v1 case. Extend detection to
-`.qa-dlc-rule-details/` and defer there too.
+Detection is on a `qadlc-*.ts` **hook** in a harness dir, not on the tools dir:
+hooks are what a `settings.json` registers and hooks are what would double-fire.
+And only plugin-mode hooks cede — a vendored hook obviously must not stand down on
+finding its own tree, which is why `shouldCedeToVendored()` checks
+`harnessData(engineRoot).mode` first.
+
+`SessionStart` explains the stand-down instead of going quiet, and `doctor`
+reports it. A plugin that silently does nothing is harder to diagnose than one
+that says why; the other four hooks exit without comment, since `PostToolUse`
+would otherwise repeat the notice on every edit.
+
+**Correction: do NOT extend ceding to v1.** An earlier draft of this section said
+"the same mechanism answers the v1 case — extend detection to
+`.qa-dlc-rule-details/` and defer there too." That is wrong, and would have been a
+self-inflicted wound:
+
+- v1 is **prose-only** — `.qa-dlc-rule-details/` plus a `QA-CLAUDE.md`. It ships no
+  hooks and registers nothing in `settings.json`, so there is nothing to
+  double-fire and no reason to stand down.
+- v1 is committed on `main` in `DriveWealth/qa_automation`, so it is present on
+  **every branch**. Ceding on v1 detection would make the plugin permanently inert
+  in precisely the repository it exists to serve — the rollout would fail closed
+  and look like the plugin was broken.
+
+v1's real overlap with v2 is the **trigger vocabulary**, which §8.3 handles. So
+the plugin stays fully active alongside v1 and `SessionStart` adds one line naming
+which version is running.
 
 ### 8.3 Trigger disambiguation
 
@@ -774,7 +799,7 @@ green (`bun scripts/package.ts --check`).
 | **2. Namespacing** ✅ | §8.1 `.qadlc/` move (state, audit, sensors, diaries, step catalog), refuse-not-clobber in `writeState`, both `.gitignore`s, `core/tools/qadlc-migrate.ts` with `--dry-run`, 30 prose paths rewritten, the step-existence sensor's bespoke walk-up folded into the shared resolver | **Done.** `bun run check` green: no drift, 60 pass / 0 skip. Migration verified against mixed v1+v2+`inception/` fixtures; a migrated session resumes correctly |
 | **3. Plugin target** ✅ | §7: `harness/plugin/` (manifest, `emit`, `bin-qadlc.ts`, SKILL.md, INSTALL.md), `plugin.json` + `hooks/hooks.json` + `bin/qadlc` @ 0o755, `core/tools/qadlc-init.ts`, mode comparison in `--check`, memory shipped as `templates/memory/` | **Done.** `claude plugin validate --strict` passes (exit 0; verified it exits 1 on a broken tree); plan gate blocks under a plugin install; `bun run check` green across 3 targets, 71 pass. **Not verified: a live `claude --plugin-dir` session** — see §11 |
 | **4. Docs/token** ✅ | §6: shared `core/tools/qadlc.ts` dispatcher + `{{QADLC_CMD}}` (17 refs), engine paths moved onto the `run-stage` payload (`agent_file`/`knowledge_dir`/`sensor_files`), memory unified at `.qadlc/memory/` in all targets, sensor-authoring prose repointed at the source repo, `entryCommand()` for model-facing messages, leftover-token build assertion | **Done.** `bun run check` green, 80 pass; validate --strict passes. 16 files still differ across targets and **all 16 differ only in the entry command** (asserted). `{{PROJECT_MEMORY_DIR}}` proved unnecessary; "byte-identical" was not achievable — see §6.2.1 |
-| **5. Coexistence** | §8.2 cede-to-vendored, §8.3 trigger narrowing, `SessionStart` notice | Manual test: plugin installed + vendored tree present → each hook fires exactly once |
+| **5. Coexistence** ✅ | §8.2 `shouldCedeToVendored()` wired into all five hooks (plugin mode only), `SessionStart` stand-down notice with the exact cleanup, `doctor` reports it, §8.3 trigger narrowing documented in the skill with a retirement marker, v1-present note | **Done.** Gate met **as an automated test, not a manual one**: with plugin + vendored both live, the plugin's audit-logger/sensor-fire/session-end write nothing, the plugin's Stop stays silent, and the vendored Stop still blocks — exactly one `ARTIFACT_` entry per edit. Plus: v1 alone does not trigger ceding (§8.2 correction). `bun run check` green, 87 pass |
 | **6. Publish** | §9.1 `marketplace.json`, install/upgrade docs, perf work from §7.2 | A teammate installs from a clean machine following only the written steps |
 | **7. Retirement** | Remove `.qa-dlc-rule-details/` + old `QA-CLAUDE.md` from `qa_automation` `main`; revert §8.3 narrowing | Separate PR in `qa_automation`, reviewed there |
 

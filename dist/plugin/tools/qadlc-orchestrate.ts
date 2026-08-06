@@ -23,6 +23,8 @@ import {
   hooksHealthDir,
   loadJson,
   resolveProjectRoot,
+  shouldCedeToVendored,
+  v1InstallPresent,
 } from "./qadlc-lib.ts";
 import type { StageGraph, ScopeGrid } from "./qadlc-graph.ts";
 import type { StageDefinition } from "./qadlc-stage-schema.ts";
@@ -490,6 +492,16 @@ function doctorDirective(): Directive {
   const lines: string[] = ["QADLC doctor — environment & setup check", ""];
   lines.push(`- bun: ${process.versions.bun ? `v${process.versions.bun}` : "NOT DETECTED (required)"}`);
   lines.push(`- install mode: ${hd.mode}`);
+  if (shouldCedeToVendored(ENGINE_ROOT, PROJECT_ROOT)) {
+    lines.push("- STANDING DOWN: this project vendors its own QADLC engine, so the");
+    lines.push("  plugin's hooks exit without acting. Use the vendored commands, or");
+    lines.push("  remove .claude/hooks/qadlc-*.ts + the settings.json entries and run");
+    lines.push("  `qadlc migrate` to switch over.");
+  }
+  if (v1InstallPresent(PROJECT_ROOT)) {
+    lines.push("- note: QADLC v1 (.qa-dlc-rule-details/) is also present; v2 does not");
+    lines.push("  read its state and writes only under .qadlc/.");
+  }
   lines.push(`- engine root: ${ENGINE_ROOT}`);
   lines.push(`- project root: ${PROJECT_ROOT}`);
   lines.push(`- version: ${hd.version}`);

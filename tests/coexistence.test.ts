@@ -791,3 +791,129 @@ describe("model-facing messages name the entry command", () => {
     expect(out).not.toContain("qadlc-orchestrate.ts");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 7. Ceding to a vendored install (Phase 5)
+// ---------------------------------------------------------------------------
+describe("cede to vendored", () => {
+  /** A project with BOTH a vendored .claude/ tree and a plugin installed. */
+  function bothInstalled(): { proj: string; engine: string } {
+    const engine = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-cede-")));
+    cpSync(join(REPO, "dist", "plugin"), engine, { recursive: true });
+    const proj = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-cedep-")));
+    cpSync(DIST_CLAUDE, tree(proj), { recursive: true });
+    mkdirSync(join(proj, "features"), { recursive: true });
+    // an active v2 session, so nothing else can explain a hook no-op
+    spawnSync("bun", [tool(proj, "qadlc-orchestrate.ts"), "report", "--scope", "smoke"], { cwd: proj });
+    return { proj, engine };
+  }
+  const env = (proj: string) => ({ ...withoutProjectEnv(), CLAUDE_PROJECT_DIR: proj });
+
+  test("plugin hooks stand down; the vendored copy still works", () => {
+    const { proj, engine } = bothInstalled();
+    const before = readFileSync(join(proj, ".qadlc", "audit.md"), "utf-8");
+    const ev = JSON.stringify(writeEvent(proj, "features/x.feature"));
+    writeFileSync(join(proj, "features", "x.feature"), FEATURE, "utf-8");
+
+    // the PLUGIN's audit-logger must write nothing
+    spawnSync("bun", [join(engine, "hooks", "qadlc-audit-logger.ts")], {
+      cwd: proj, env: env(proj), input: ev,
+    });
+    expect(readFileSync(join(proj, ".qadlc", "audit.md"), "utf-8")).toBe(before);
+
+    // the VENDORED audit-logger must still write — ceding is plugin-only
+    spawnSync("bun", [hook(proj, "qadlc-audit-logger.ts")], {
+      cwd: proj, env: env(proj), input: ev,
+    });
+    const after = readFileSync(join(proj, ".qadlc", "audit.md"), "utf-8");
+    expect(after).not.toBe(before);
+    expect(after.match(/## ARTIFACT_/g) ?? []).toHaveLength(1); // exactly once
+  });
+
+  test("the plan gate is evaluated once, by the vendored hook only", () => {
+    const { proj, engine } = bothInstalled();
+    writeFileSync(join(proj, "features", "x.feature"), FEATURE, "utf-8");
+    spawnSync("bun", [hook(proj, "qadlc-audit-logger.ts")], {
+      cwd: proj, env: env(proj), input: JSON.stringify(writeEvent(proj, "features/x.feature")),
+    });
+    const pluginStop = spawnSync("bun", [join(engine, "hooks", "qadlc-stop.ts")], {
+      cwd: proj, env: env(proj), input: "{}", encoding: "utf-8",
+    });
+    const vendoredStop = spawnSync("bun", [hook(proj, "qadlc-stop.ts")], {
+      cwd: proj, env: env(proj), input: "{}", encoding: "utf-8",
+    });
+    expect(pluginStop.stdout ?? "").toBe("");                       // ceded
+    expect(vendoredStop.stdout ?? "").toContain('"decision":"block"'); // still enforced
+  });
+
+  test("sensor-fire and session-end also cede", () => {
+    const { proj, engine } = bothInstalled();
+    writeFileSync(join(proj, "gherkin_plan.md"), "# Plan\n\n## Story-to-Scenario Mapping\nx\n", "utf-8");
+    const before = readFileSync(join(proj, ".qadlc", "audit.md"), "utf-8");
+    spawnSync("bun", [join(engine, "hooks", "qadlc-sensor-fire.ts")], {
+      cwd: proj, env: env(proj), input: JSON.stringify(writeEvent(proj, "gherkin_plan.md")),
+    });
+    spawnSync("bun", [join(engine, "hooks", "qadlc-session-end.ts")], {
+      cwd: proj, env: env(proj), input: JSON.stringify({ hook_event_name: "SessionEnd" }),
+    });
+    expect(readFileSync(join(proj, ".qadlc", "audit.md"), "utf-8")).toBe(before);
+    expect(existsSync(join(proj, ".qadlc", "sensors"))).toBe(false);
+  });
+
+  test("session-start explains the stand-down instead of going quiet", () => {
+    const { proj, engine } = bothInstalled();
+    const r = spawnSync("bun", [join(engine, "hooks", "qadlc-session-start.ts")], {
+      cwd: proj, env: env(proj), input: JSON.stringify({ hook_event_name: "SessionStart" }),
+      encoding: "utf-8",
+    });
+    expect(r.stdout ?? "").toContain("standing down");
+    expect(r.stdout ?? "").toContain("qadlc migrate");
+    expect(r.status).toBe(0);
+  });
+
+  test("doctor reports the stand-down", () => {
+    const { proj, engine } = bothInstalled();
+    const d = JSON.parse(
+      spawnSync(join(engine, "bin", "qadlc"), ["doctor"], {
+        cwd: proj, encoding: "utf-8", env: withoutProjectEnv(),
+      }).stdout ?? "{}",
+    );
+    expect(d.message).toContain("STANDING DOWN");
+  });
+
+  test("a plugin in a project with NO vendored tree does not cede", () => {
+    const engine = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-nocede-")));
+    cpSync(join(REPO, "dist", "plugin"), engine, { recursive: true });
+    const proj = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-nocedep-")));
+    mkdirSync(join(proj, ".git"), { recursive: true });
+    mkdirSync(join(proj, "features"), { recursive: true });
+    const e = { ...withoutProjectEnv(), CLAUDE_PROJECT_DIR: proj };
+    spawnSync(join(engine, "bin", "qadlc"), ["report", "--scope", "smoke"], { cwd: proj, env: e });
+    writeFileSync(join(proj, "features", "x.feature"), FEATURE, "utf-8");
+    spawnSync("bun", [join(engine, "hooks", "qadlc-audit-logger.ts")], {
+      cwd: proj, env: e, input: JSON.stringify(writeEvent(proj, "features/x.feature")),
+    });
+    expect(readFileSync(join(proj, ".qadlc", "audit.md"), "utf-8")).toContain("ARTIFACT_");
+  });
+
+  test("v1 alone does NOT make the plugin cede", () => {
+    // v1 is prose-only: no hooks, so nothing can double-fire. Ceding on v1 would
+    // make the plugin inert in the very repo it exists to serve, since v1 is
+    // committed on main there and therefore present on every branch.
+    const engine = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-v1c-")));
+    cpSync(join(REPO, "dist", "plugin"), engine, { recursive: true });
+    const proj = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-v1cp-")));
+    mkdirSync(join(proj, ".git"), { recursive: true });
+    mkdirSync(join(proj, ".qa-dlc-rule-details"), { recursive: true });
+    mkdirSync(join(proj, "features"), { recursive: true });
+    writeFileSync(join(proj, "QA-CLAUDE.md"), "# QA-DLC v1\n", "utf-8");
+    const e = { ...withoutProjectEnv(), CLAUDE_PROJECT_DIR: proj };
+    spawnSync(join(engine, "bin", "qadlc"), ["report", "--scope", "smoke"], { cwd: proj, env: e });
+    const r = spawnSync("bun", [join(engine, "hooks", "qadlc-session-start.ts")], {
+      cwd: proj, env: e, input: JSON.stringify({ hook_event_name: "SessionStart" }), encoding: "utf-8",
+    });
+    expect(r.stdout ?? "").not.toContain("standing down");
+    expect(r.stdout ?? "").toContain("v1");   // named, so the user knows which is running
+    expect(r.stdout ?? "").toContain("Welcome back");
+  });
+});
