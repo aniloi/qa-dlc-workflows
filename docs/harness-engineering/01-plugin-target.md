@@ -608,6 +608,11 @@ Two things worth taking from this beyond the fix:
   frontmatter at all, and it found a live bug within a minute of being pointed at
   the tree. It now runs as a test (skipping cleanly if the CLI is absent) and as
   `bun run plugin:validate`.
+- **Confirmed fixed in a live session.** Loading `dist/plugin` with
+  `--plugin-dir` lists `/qadlc:qadlc` with its complete description text. Before
+  the fix that field was dropped at load time, so the skill's entire trigger
+  surface was empty — the model had nothing to match `/qadlc` against beyond the
+  directory name. Anyone on vendored v2.0.0 still has that bug.
 - It is an argument for the plugin target beyond distribution: it subjects the
   shared `core/` surfaces to a schema checker the vendored path never had.
 
@@ -885,7 +890,7 @@ to the install tree.
 
 | Risk | Handling |
 |---|---|
-| **No live-session verification yet.** Everything about the plugin is checked structurally (validator, exec bit, hooks.json shape, plan gate via direct hook invocation) but no test confirms Claude Code actually *registers* the skill, puts `bin/` on the Bash PATH, and fires `hooks/hooks.json` in a real session | Run `claude --plugin-dir ./dist/plugin` by hand in a scratch repo and check: `/qadlc` appears, `qadlc --version` works as a bare command, and an edit produces an audit entry. A nested `claude -p` could not authenticate from inside the authoring session, so this is the one Phase 3 claim resting on documentation rather than observation |
+| **Live-session verification: partially closed.** Confirmed by hand with `claude --plugin-dir ./dist/plugin`: all three skills register (`qadlc:qadlc`, `qadlc:qadlc-replay`, `qadlc:qadlc-session-cost`), the invocation name comes from frontmatter `name` as intended, and **the §7.6 frontmatter fix is verified live** — the full trigger description renders, where before the fix every frontmatter field was silently dropped. Still unobserved: `bin/` on the Bash tool's PATH, `hooks/hooks.json` actually firing, and agent registration | Remaining check, same session: run `qadlc --version` (bare command → `bin/` on PATH), then edit an unrelated file (expect NO `.qadlc/audit.md` entry) and write a `.feature` (expect `ARTIFACT_CREATED`). That also unblocks the `if` patch in §7.2 |
 | `if`-narrowed hook matchers not shipped | Deliberate. `hooks.json` mirrors `settings.json`'s matcher exactly; the `if` pass is Phase 6 where it can be measured. A non-matching `if` would silently stop the audit-logger and sensors, which is worse than being slow |
 | `harnessDir: ""` interacting badly with the orphan scan | Checked — `join`/`relative` behave correctly (§7.1). Residual risk is the token-substitution trap, covered by the Phase 4 assertion |
 | Whether `if` can express a tool-agnostic rule (docs only show tool-scoped forms like `Edit(*.ts)`) | Assume tool-scoped; generate per-matcher groups. The §7.2 heartbeat fix is the unconditional win |
