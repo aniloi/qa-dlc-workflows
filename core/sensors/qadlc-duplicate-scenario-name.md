@@ -1,7 +1,7 @@
 ---
 id: duplicate-scenario-name
 kind: deterministic
-command: bun {{HARNESS_DIR}}/tools/qadlc-sensor-duplicate-scenario-name.ts
+command: {{QADLC_CMD}} sensor-run duplicate-scenario-name
 default_severity: advisory
 description: Detects scenario names that collide across the .feature files in the written file's directory tree
 category: cross-feature

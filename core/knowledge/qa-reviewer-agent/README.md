@@ -6,7 +6,7 @@
 
 - Step wording + parameterization style
 - `Background` vs. inline setup usage
-- Tag vocabulary actually in use (feed `memory/project.md`)
+- Tag vocabulary actually in use (feed `.qadlc/memory/project.md`)
 - Data-table / `Scenario Outline` conventions
 - File + scenario naming
 - Abstraction level (declarative vs. procedural)

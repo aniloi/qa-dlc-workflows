@@ -4,6 +4,8 @@
 // present. Non-blocking.
 
 import {
+  engineRootFromTool,
+  entryCommand,
   errorMessage,
   recordHookDrop,
   resolveProjectRootOrExit,
@@ -28,7 +30,7 @@ try {
     `- Plan Approved: ${state.plan_approved}`,
     `- Feature Files: ${state.feature_files_written} / ${state.feature_files_total}`,
     "",
-    "Run the conductor loop (qadlc-orchestrate.ts next) to continue.",
+    `Run the conductor loop (${entryCommand(engineRootFromTool(import.meta.url))} next) to continue.`,
   ].join("\n");
   process.stdout.write(`${summary}\n`);
 } catch (e) {

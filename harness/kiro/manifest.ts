@@ -27,7 +27,8 @@ const manifest: HarnessManifest = {
     { src: "scopes", dst: "scopes" },
     { src: "agents", dst: "agents" },
     { src: "hooks", dst: "hooks" },
-    { src: "memory", dst: "memory" },
+    // Project-owned; `qadlc init` materializes it into .qadlc/memory/.
+    { src: "memory", dst: "templates/memory" },
     { src: "skills/qadlc-session-cost", dst: "skills/qadlc-session-cost" },
     { src: "skills/qadlc-replay", dst: "skills/qadlc-replay" },
   ],

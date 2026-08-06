@@ -1,7 +1,7 @@
 ---
 id: plan-sections
 kind: deterministic
-command: bun {{HARNESS_DIR}}/tools/qadlc-sensor-plan-sections.ts
+command: {{QADLC_CMD}} sensor-run plan-sections
 default_severity: advisory
 description: Verifies gherkin_plan.md contains the required H2 sections, including the "Stories Without Requirements" gap report
 category: plan-shape

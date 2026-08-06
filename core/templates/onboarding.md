@@ -17,7 +17,7 @@ Invoke the workflow with:
 
 When invoked, read and follow the conductor at
 `{{HARNESS_DIR}}/qa-common/conductor.md`, which drives the deterministic engine
-(`{{HARNESS_DIR}}/tools/qadlc-orchestrate.ts`). The engine decides which stage
+(`{{QADLC_CMD}}`). The engine decides which stage
 runs next based on the detected scope; the conductor executes each stage well.
 
 You can also pass flags after the trigger — forwarded to the engine unchanged:

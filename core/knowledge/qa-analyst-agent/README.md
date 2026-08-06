@@ -27,7 +27,7 @@ Questions rather than assuming.
 
 ## Using the project knowledge base
 
-When the project ships a `kb/` (see `memory/project.md`), load the relevant
+When the project ships a `kb/` (see `.qadlc/memory/project.md`), load the relevant
 slices during Story Analysis (per `stage-protocol.md` §5): the index maps story
 prefixes and domain keywords to sections; always read the glossary/agent-notes.
 Use it to resolve domain terms and to surface **implied** acceptance criteria a

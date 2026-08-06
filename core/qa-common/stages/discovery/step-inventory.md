@@ -49,7 +49,7 @@ Plan must map each proposed scenario's steps to entries here before proposing an
 new step.
 
 ### Step 4 — Advance
-`bun {{HARNESS_DIR}}/tools/qadlc-orchestrate.ts report --stage step-inventory`.
+`{{QADLC_CMD}} report --stage step-inventory`.
 
 ## Sensors
 

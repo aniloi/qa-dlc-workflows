@@ -50,7 +50,7 @@ needs a decision. Re-run affected sensors after any edit.
 
 ### Step 3 — Final summary + advance
 Present the final completion summary, then
-`bun .kiro/tools/qadlc-orchestrate.ts report --stage cross-feature-check`.
+`bun .kiro/tools/qadlc.ts report --stage cross-feature-check`.
 The engine emits `done`.
 
 ## Sensors
@@ -62,6 +62,6 @@ from AI-remembered prose into a repeatable check across the written suite.
 ## Learn
 
 Diary at `.qadlc/diaries/cross-feature-check/memory.md`. A class of
-consistency problem you keep catching by hand is a candidate for a new sensor
-(author a manifest under `.kiro/sensors/` and add its id to this
-stage's `sensors:` list per `stage-protocol.md` §Learn).
+consistency problem you keep catching by hand is a candidate for a new sensor.
+Sensors live in the QADLC source repo, not in the install tree — see
+`stage-protocol.md` §Learn for how to propose one.

@@ -1,7 +1,7 @@
 ---
 id: gherkin-lint
 kind: deterministic
-command: bun .claude/tools/qadlc-sensor-gherkin-lint.ts
+command: bun .claude/tools/qadlc.ts sensor-run gherkin-lint
 default_severity: advisory
 description: Structural lint of a .feature file — kebab-case filename, Feature/scenario/step shape, outline Examples, no empty or leading-conjunction scenarios
 category: gherkin-shape

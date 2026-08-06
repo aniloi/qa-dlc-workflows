@@ -282,9 +282,23 @@ point at `memory/`, which is **project**-owned.
 
 The resolution, in priority order:
 
-1. **`{{QADLC_CMD}}`** replaces all 9 orchestrate refs plus the state/graph/sensor
-   tool refs. Substitutes to `qadlc` or `bun .claude/tools/qadlc-orchestrate.ts`.
-   This is the single biggest reduction.
+1. **`{{QADLC_CMD}}`** replaces all 17 command refs. Substitutes to `qadlc`
+   (plugin) or `bun .claude/tools/qadlc.ts` (vendored). The single biggest
+   reduction.
+
+   **This forced a design addition the plan had not anticipated.** The 17 refs
+   name *five different tools* (orchestrate, state, graph, and five sensors), so
+   one command token only works if every target exposes a uniform subcommand
+   surface. `core/tools/qadlc.ts` is that dispatcher, and it is shared, not
+   plugin-only: vendored installs get `bun .claude/tools/qadlc.ts state show`
+   where they previously had `bun .claude/tools/qadlc-state.ts show`. The plugin's
+   `bin/qadlc` is a byte-identical copy of the same file — the engine root is
+   `dirname(dirname(url))` from both `<root>/tools/qadlc.ts` and `<root>/bin/qadlc`,
+   so one source serves both locations with no extra process hop.
+
+   Without the dispatcher this phase would have needed a token per tool
+   (`{{QADLC_STATE_CMD}}`, `{{QADLC_SENSOR_CMD}}`, …), which is the shape the
+   "one stable entry command" idea exists to avoid.
 2. **Prose stops naming engine paths entirely.** The engine already inlines
    `conductor.md` content into the first directive via `readPersona()` and already
    emits `stage_file`. Extend the directive payload with resolved absolute
@@ -293,15 +307,51 @@ The resolution, in priority order:
    the directive names."
 
    This is the right call independent of plugins: the engine knows `ENGINE_ROOT`
-   at runtime and can emit a correct absolute path; prose cannot. It also means
-   `core/` prose becomes **byte-identical across all three targets**, which is
-   exactly the "one generator, two targets" property the issue is protecting.
-3. **`{{PROJECT_MEMORY_DIR}}`** for the 6 memory refs → `.claude/memory`
-   (vendored) or `.qadlc/memory` (plugin).
+   at runtime and can emit a correct absolute path; prose cannot. Implemented as
+   `agent_file`, `knowledge_dir` and `sensor_files[]` on the `run-stage` payload,
+   resolved through one `enginePath()` helper that returns an absolute path in
+   plugin mode and the familiar project-relative form when vendored.
 
-After this, `{{HARNESS_DIR}}` should have no remaining uses in `core/`. Assert
-that in the packager: fail the build if the token survives in a plugin-target
-output. Cheap regression guard, same spirit as §4.3.
+   The "add a sensor" prose needed a different fix, not a directive field. Three
+   refs told the model to author a manifest *into the install tree*. Under a
+   plugin that tree is read-only and replaced on upgrade, so the instruction was
+   not merely unportable but wrong. Those now point at the QADLC **source repo**
+   (`core/sensors/…`) and say plainly that sensors reach projects through a
+   release, with team memory as the place to record the rule meanwhile.
+3. **No `{{PROJECT_MEMORY_DIR}}` token after all.** Memory is project-owned in
+   *every* install mode, so it simply lives at `.qadlc/memory/` everywhere and
+   prose names that literal path. All three targets now ship `templates/memory/`
+   and materialize it with `qadlc init`; `qadlc migrate` moves an existing
+   `.claude/memory/` across. One less token, one less divergence — and vendored
+   installs stop treating team vocabulary as engine content that an upgrade would
+   overwrite.
+
+After this, `{{HARNESS_DIR}}` has no remaining uses in `core/` outside
+`core/templates/onboarding.md`, the vendored-only onboarding skeleton where a
+project-relative engine path is correct. The packager now fails the build on any
+surviving `{{…}}` token in built `.md` output — verified by planting one.
+
+### 6.2.1 Correction: "byte-identical prose" was not achievable
+
+An earlier draft of §6.2 claimed this work makes `core/` prose **byte-identical
+across all three targets**. It does not, and could not: the entry command itself
+must differ, because a plugin is invoked as `qadlc` and a vendored tree as
+`bun .claude/tools/qadlc.ts`.
+
+What is achievable, and what now holds, is the property that actually matters:
+
+> **Prose encodes the invocation, never the install layout.**
+
+Measured after the rewrite: 16 `core/` markdown files still differ between
+`dist/claude` and `dist/plugin`, and **all 16 differ only in the entry command** —
+asserted by a test that normalizes both spellings and requires the remainder to
+match exactly. Zero engine paths remain in shared prose.
+
+The same rule had to be extended to engine *messages*, which the plan missed
+entirely: `detect-scope`, the plan-gate block message, and the session-start
+resume note each hardcoded `qadlc-orchestrate.ts …`. Those strings are read by the
+model and would be unrunnable under a plugin, so they now route through a shared
+`entryCommand()` helper.
 
 ### 6.3 `rules/qadlc.md` collapses into the skill
 
@@ -723,7 +773,7 @@ green (`bun scripts/package.ts --check`).
 | **1. Path resolution** ✅ | §4 in full: three roots, `projectRootFromTool` and `resolveProjectDirFromHook` deleted, `resolveProjectRoot()` + `…OrExit()` + guardrail, `mode`/`entryCmd` in `harness.json`, `orchestrateCmd()` reads `entryCmd`, `hooksHealthDir` → `.qadlc/health/`, heartbeat moved after the guards, `hookHarnessDirName` deleted | **Done.** `bun run check` green: no drift, 53 pass / 1 skip. Vendored `orchestrateCmd` output byte-identical; `--doctor` now reports mode + both roots |
 | **2. Namespacing** ✅ | §8.1 `.qadlc/` move (state, audit, sensors, diaries, step catalog), refuse-not-clobber in `writeState`, both `.gitignore`s, `core/tools/qadlc-migrate.ts` with `--dry-run`, 30 prose paths rewritten, the step-existence sensor's bespoke walk-up folded into the shared resolver | **Done.** `bun run check` green: no drift, 60 pass / 0 skip. Migration verified against mixed v1+v2+`inception/` fixtures; a migrated session resumes correctly |
 | **3. Plugin target** ✅ | §7: `harness/plugin/` (manifest, `emit`, `bin-qadlc.ts`, SKILL.md, INSTALL.md), `plugin.json` + `hooks/hooks.json` + `bin/qadlc` @ 0o755, `core/tools/qadlc-init.ts`, mode comparison in `--check`, memory shipped as `templates/memory/` | **Done.** `claude plugin validate --strict` passes (exit 0; verified it exits 1 on a broken tree); plan gate blocks under a plugin install; `bun run check` green across 3 targets, 71 pass. **Not verified: a live `claude --plugin-dir` session** — see §11 |
-| **4. Docs/token** | §6: `{{QADLC_CMD}}`, `{{PROJECT_MEMORY_DIR}}`, engine paths out of prose, `SKILL.md` absorbs `rules-qadlc.md`, fix the `.ts` token | Packager asserts no surviving `{{HARNESS_DIR}}` in the plugin target; `core/` prose byte-identical across targets |
+| **4. Docs/token** ✅ | §6: shared `core/tools/qadlc.ts` dispatcher + `{{QADLC_CMD}}` (17 refs), engine paths moved onto the `run-stage` payload (`agent_file`/`knowledge_dir`/`sensor_files`), memory unified at `.qadlc/memory/` in all targets, sensor-authoring prose repointed at the source repo, `entryCommand()` for model-facing messages, leftover-token build assertion | **Done.** `bun run check` green, 80 pass; validate --strict passes. 16 files still differ across targets and **all 16 differ only in the entry command** (asserted). `{{PROJECT_MEMORY_DIR}}` proved unnecessary; "byte-identical" was not achievable — see §6.2.1 |
 | **5. Coexistence** | §8.2 cede-to-vendored, §8.3 trigger narrowing, `SessionStart` notice | Manual test: plugin installed + vendored tree present → each hook fires exactly once |
 | **6. Publish** | §9.1 `marketplace.json`, install/upgrade docs, perf work from §7.2 | A teammate installs from a clean machine following only the written steps |
 | **7. Retirement** | Remove `.qa-dlc-rule-details/` + old `QA-CLAUDE.md` from `qa_automation` `main`; revert §8.3 narrowing | Separate PR in `qa_automation`, reviewed there |

@@ -46,12 +46,12 @@ Capture:
 - Abstraction level — declarative, not procedural
 
 ### Step 3 — Reconcile with team memory
-If team convention memory exists (`{{HARNESS_DIR}}/memory/` / space memory),
+If team convention memory exists (`.qadlc/memory/` / space memory),
 reconcile the extracted style with the standing team rules; the team rule wins on
 conflict and the divergence is noted as an Open Question.
 
 ### Step 4 — Advance
-`bun {{HARNESS_DIR}}/tools/qadlc-orchestrate.ts report --stage convention-extraction`.
+`{{QADLC_CMD}} report --stage convention-extraction`.
 
 ## Sensors
 

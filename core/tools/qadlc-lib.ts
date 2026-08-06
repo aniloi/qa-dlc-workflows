@@ -180,6 +180,17 @@ export function harnessData(engineRoot: string): HarnessData {
   };
 }
 
+/**
+ * The command string to put in front of the model. Every message that tells the
+ * model what to run must go through this: a hardcoded `qadlc-orchestrate.ts …`
+ * is unrunnable under a plugin install, where the engine has no
+ * project-relative path and the Bash tool cannot expand ${CLAUDE_PLUGIN_ROOT}.
+ */
+export function entryCommand(engineRoot: string): string {
+  const hd = harnessData(engineRoot);
+  return hd.entryCmd || `bun ${hd.harnessDir || ".claude"}/tools/qadlc.ts`;
+}
+
 // ---------------------------------------------------------------------------
 // Project-root resolution
 // ---------------------------------------------------------------------------

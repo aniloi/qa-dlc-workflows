@@ -17,7 +17,7 @@ Using QADLC, write feature files for <Jira key or story path>
 
 When invoked, read and follow the conductor at
 `.claude/qa-common/conductor.md`, which drives the deterministic engine
-(`.claude/tools/qadlc-orchestrate.ts`). The engine decides which stage
+(`bun .claude/tools/qadlc.ts`). The engine decides which stage
 runs next based on the detected scope; the conductor executes each stage well.
 
 You can also pass flags after the trigger — forwarded to the engine unchanged:

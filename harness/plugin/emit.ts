@@ -126,11 +126,16 @@ function emit(ctx: EmitContext): EmitResult {
   write(".claude-plugin/plugin.json", `${JSON.stringify(manifest, null, 2)}\n`);
   write("hooks/hooks.json", `${JSON.stringify(hooksJson(), null, 2)}\n`);
 
-  // bin/qadlc must be executable or Claude Code cannot run it from PATH.
-  // writeFileSync does not set a mode, so this chmod is load-bearing — and it is
-  // why package.ts --check compares file modes, not just bytes.
+  // bin/qadlc is a byte-identical copy of core/tools/qadlc.ts. The dispatcher
+  // resolves the engine root as dirname(dirname(import.meta.url)), which is the
+  // plugin root from BOTH <root>/tools/qadlc.ts and <root>/bin/qadlc — so one
+  // source serves both locations with no extra process hop.
+  //
+  // The exec bit is load-bearing: Claude Code puts bin/ on the Bash tool's PATH,
+  // and writeFileSync sets no mode. package.ts --check compares modes for exactly
+  // this reason.
   try {
-    const src = readFileSync(join(ctx.harnessRoot, "bin-qadlc.ts"), "utf-8");
+    const src = readFileSync(join(ctx.coreRoot, "tools", "qadlc.ts"), "utf-8");
     write("bin/qadlc", src, 0o755);
   } catch (e) {
     problems.push(`bin/qadlc: ${e instanceof Error ? e.message : String(e)}`);

@@ -52,7 +52,7 @@ step reuse over invention, correct tagging for the depth.
 Immediately mark that file `[x]` in `gherkin_plan.md`, in the same interaction.
 
 ### Step 3 — Report the file
-`bun .kiro/tools/qadlc-orchestrate.ts report --stage feature-generation --file <path>`.
+`bun .kiro/tools/qadlc.ts report --stage feature-generation --file <path>`.
 This increments the written count and appends a FEATURE_FILE_WRITTEN audit row.
 When the last file is written, add `--done` (or the engine auto-completes once
 written == total). Then it advances to the Cross-Feature Consistency Check.

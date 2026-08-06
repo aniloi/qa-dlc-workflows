@@ -47,11 +47,12 @@ non-gate stages). No emergent free-form endings — keep them predictable.
 
 ## 5. Knowledge loading order
 
-Before running a stage, load in order: (1) the lead agent's file, (2) the agent's
-knowledge dir under `{{HARNESS_DIR}}/knowledge/<agent>/` if present, (3) team
-memory under `{{HARNESS_DIR}}/memory/` (team rule wins on conflict), and (4) the
+Before running a stage, load in order: (1) the lead agent's file (`agent_file` in
+the directive), (2) the agent's knowledge dir (`knowledge_dir`, empty when the
+agent ships none), (3) team
+memory under `.qadlc/memory/` (team rule wins on conflict), and (4) the
 **project knowledge base** — a `kb/` directory (or the location named in
-`memory/project.md`) carrying domain facts, business rules, and a glossary. Load
+`.qadlc/memory/project.md`) carrying domain facts, business rules, and a glossary. Load
 only the KB slices relevant to the work (its index maps story prefixes and domain
 keywords to sections); never load the whole KB. The most specific non-empty
 statement wins.
@@ -69,11 +70,15 @@ consciously accept each finding.
 Each stage keeps a diary (`.qadlc/diaries/<stage>/memory.md`). Before a
 gate, read it and surface candidates:
 
-- **Prescriptive rule** → write to team memory (`{{HARNESS_DIR}}/memory/team.md`
+- **Prescriptive rule** → write to team memory (`.qadlc/memory/team.md`
   or `project.md`). Next run loads it automatically.
-- **Verification check** → author a new sensor manifest at
-  `{{HARNESS_DIR}}/sensors/qadlc-<id>.md` and add `<id>` to the relevant stage's
-  `sensors:` list.
+- **Verification check** → a new sensor. Sensors are FRAMEWORK code, not project
+  content: they are authored in the QADLC source repo (`core/sensors/qadlc-<id>.md`
+  plus `core/tools/qadlc-sensor-<id>.ts`, with `<id>` added to a stage's `sensors:`
+  list) and reach projects through a release. Do not try to write one into the
+  install tree — it is read-only, and under a plugin install it is a shared cache
+  that is replaced on upgrade. Record the check in team memory and open an issue
+  against QADLC instead.
 
 Stage files are immutable framework artefacts — the ritual writes into the
 harness (memory, sensors), never into the stage file. Recompile the graph

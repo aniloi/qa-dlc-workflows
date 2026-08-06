@@ -71,7 +71,7 @@ before the named command silently skips the move.
 
 If you see a `.claude/hooks/qadlc-*.ts` tree, this project vendors its own copy
 of QADLC and that copy is authoritative. Use its commands
-(`bun .claude/tools/qadlc-orchestrate.ts …`), not `qadlc`, and tell the user the
+(`bun .claude/tools/qadlc.ts …`), not `qadlc`, and tell the user the
 project should remove the vendored tree and run `qadlc migrate` to switch over.
 
 Say so explicitly rather than proceeding quietly: plugin hooks and vendored

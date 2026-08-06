@@ -19,7 +19,7 @@ whole run.
 
 ## The engine/conductor split
 
-- **The engine** (`/tools/qadlc-orchestrate.ts`) owns routing:
+- **The engine** (`qadlc`) owns routing:
   which stage runs next, under which scope and depth, when the plan gate blocks,
   and when the workflow is done. It derives every decision from the compiled
   graph (`tools/data/stage-graph.json`, `scope-grid.json`) and the session state
@@ -32,8 +32,8 @@ engine emits `done`.
 
 ## Framing the persona
 
-Each `run-stage` directive names a `lead_agent`. Load that agent's file
-(`/agents/<lead_agent>.md`) and adopt its voice for the stage
+Each `run-stage` directive names a `lead_agent` and carries the resolved path to
+its persona in `agent_file`. Read that file and adopt its voice for the stage
 body. For a stage with `support_agents` in `inline` mode (e.g. the plan gate's
 reviewer), load each support agent's file and layer its perspective into your own
 context — do not dispatch a subagent for an inline stage.

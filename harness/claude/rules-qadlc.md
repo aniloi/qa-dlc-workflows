@@ -7,5 +7,5 @@ feature files), read and follow the conductor and its skill:
 @.claude/qa-common/conductor.md
 
 The conductor drives the deterministic engine at
-`.claude/tools/qadlc-orchestrate.ts`. Do not author `.feature` files before
+`bun .claude/tools/qadlc.ts`. Do not author `.feature` files before
 `gherkin_plan.md` is approved.

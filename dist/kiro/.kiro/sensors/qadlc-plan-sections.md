@@ -1,7 +1,7 @@
 ---
 id: plan-sections
 kind: deterministic
-command: bun .kiro/tools/qadlc-sensor-plan-sections.ts
+command: bun .kiro/tools/qadlc.ts sensor-run plan-sections
 default_severity: advisory
 description: Verifies gherkin_plan.md contains the required H2 sections, including the "Stories Without Requirements" gap report
 category: plan-shape

@@ -40,7 +40,7 @@ is the story: extract the observed behavior and the expected behavior.
 
 ### Step 2 — Load the project knowledge base (if present)
 If the project ships a knowledge base (a `kb/` directory or the location named in
-`memory/project.md`), load *only the relevant slices* — never the whole KB:
+`.qadlc/memory/project.md`), load *only the relevant slices* — never the whole KB:
 
 1. Read the KB's root index (e.g. `kb/index.md`) — the consumption guide.
 2. If the story key has a project prefix, use the index's **prefix → sections**
@@ -79,7 +79,7 @@ data-driven cases the criteria imply.
 
 ### Step 6 — Advance
 Report completion:
-`bun /tools/qadlc-orchestrate.ts report --stage story-analysis`.
+`qadlc report --stage story-analysis`.
 
 ## Sensors
 

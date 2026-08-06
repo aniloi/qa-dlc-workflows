@@ -47,7 +47,14 @@ const HARNESS_ROOT = join(REPO_ROOT, "harness");
 const DIST_ROOT = join(REPO_ROOT, "dist");
 const ONBOARDING_SKELETON = join(CORE_ROOT, "templates", "onboarding.md");
 const HARNESS_TOKEN = /\{\{HARNESS_DIR\}\}/g;
+// {{QADLC_CMD}} — the ONE command prose is allowed to name. Substituted from the
+// manifest's entryCmd so a stage file never encodes the install layout: a plugin
+// has no project-relative path to its engine, and the model cannot expand
+// ${CLAUDE_PLUGIN_ROOT} in a Bash command. See core/tools/qadlc.ts.
+const CMD_TOKEN = /\{\{QADLC_CMD\}\}/g;
 const HARNESS_DATA = "tools/data/harness.json";
+/** Any token that must not survive into a built tree. */
+const LEFTOVER_TOKEN = /\{\{[A-Z_]+(?::[a-z_]+)?\}\}/g;
 
 // The framework version, read once from the repo-root VERSION file and baked
 // into each harness's runtime descriptor (harness.json) so the engine can
@@ -72,8 +79,8 @@ function discoverHarnessNames(): string[] {
 // Transform: the ONE class. Token substitution on .md prose; other files copied
 // verbatim.
 // ---------------------------------------------------------------------------
-function substituteToken(s: string, harnessDir: string): string {
-  return s.replace(HARNESS_TOKEN, harnessDir);
+function substituteToken(s: string, harnessDir: string, entryCmd = ""): string {
+  return s.replace(HARNESS_TOKEN, harnessDir).replace(CMD_TOKEN, entryCmd);
 }
 
 function applyRulesRename(s: string, harnessDir: string, rulesRename: string | null): string {
@@ -86,9 +93,10 @@ function transform(
   content: Buffer,
   harnessDir: string,
   rulesRename: string | null,
+  entryCmd = "",
 ): Buffer {
   if (srcPath.endsWith(".md")) {
-    let s = substituteToken(content.toString("utf-8"), harnessDir);
+    let s = substituteToken(content.toString("utf-8"), harnessDir, entryCmd);
     s = applyRulesRename(s, harnessDir, rulesRename);
     return Buffer.from(s, "utf-8");
   }
@@ -119,11 +127,28 @@ function renameDst(dst: string, rulesRename: string | null): string {
 function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): string[] {
   const written: string[] = [];
   const harnessDirRoot = join(outRoot, m.harnessDir);
+  // One definition, used for both the {{QADLC_CMD}} prose substitution and the
+  // entryCmd the engine reads back out of harness.json, so prose and runtime can
+  // never name different commands.
+  const entryCmd = m.entryCmd ?? `bun ${m.harnessDir}/tools/qadlc.ts`;
 
+  // A token that survives into a built tree is a silent bug: the model would be
+  // told to run a literal `{{QADLC_CMD}}` or read `{{HARNESS_DIR}}/…`. Worse for
+  // the plugin target, where harnessDir is "" — an unsubstituted path token would
+  // become an absolute `/tools/…` pointing at the filesystem root. Fail the build
+  // instead. {{SLOT:…}}/{{INVOKE}} in the onboarding SKELETON are consumed by the
+  // renderer before this sees them.
+  const leftovers: string[] = [];
   const emitFile = (absPath: string, content: Buffer): void => {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, content);
     written.push(absPath);
+    if (absPath.endsWith(".md")) {
+      const found = content.toString("utf-8").match(LEFTOVER_TOKEN);
+      if (found) {
+        leftovers.push(`${relative(outRoot, absPath)}: ${[...new Set(found)].join(", ")}`);
+      }
+    }
   };
 
   // 1. core dirs → <harnessDir>/<dst> (renamed for rules).
@@ -134,7 +159,7 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
     for (const file of walk(srcDir)) {
       const rel = relative(srcDir, file);
       const outPath = join(harnessDirRoot, dstRel, rel);
-      emitFile(outPath, transform(file, readFileSync(file), m.harnessDir, m.rulesRename));
+      emitFile(outPath, transform(file, readFileSync(file), m.harnessDir, m.rulesRename, entryCmd));
     }
   }
 
@@ -147,14 +172,14 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
     }
     const dstRel = projectRoot ? dst : join(m.harnessDir, renameDst(dst, m.rulesRename));
     const outPath = join(outRoot, dstRel);
-    emitFile(outPath, transform(srcPath, readFileSync(srcPath), m.harnessDir, m.rulesRename));
+    emitFile(outPath, transform(srcPath, readFileSync(srcPath), m.harnessDir, m.rulesRename, entryCmd));
   }
 
   // 3. onboarding doc.
   if (m.onboarding) {
     const skeleton = readFileSync(ONBOARDING_SKELETON, "utf-8");
     let rendered = renderOnboarding(skeleton, m.onboarding.fills);
-    rendered = substituteToken(rendered, m.harnessDir);
+    rendered = substituteToken(rendered, m.harnessDir, entryCmd);
     rendered = applyRulesRename(rendered, m.harnessDir, m.rulesRename);
     const dstRel = m.onboarding.projectRoot
       ? m.onboarding.dst
@@ -168,7 +193,7 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
     rulesSubdir: m.rulesRename ?? "rules",
     version: readVersion(),
     mode: m.mode ?? "vendored",
-    entryCmd: m.entryCmd ?? `bun ${m.harnessDir}/tools/qadlc-orchestrate.ts`,
+    entryCmd,
   };
   emitFile(
     join(harnessDirRoot, HARNESS_DATA),
@@ -197,14 +222,23 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
       harnessRoot: harnessSrcRoot,
       distRoot: outRoot,
       harnessDir: m.harnessDir,
-      substituteToken: (s) => substituteToken(s, m.harnessDir),
+      substituteToken: (s) => substituteToken(s, m.harnessDir, entryCmd),
       check,
     };
     const result = m.emit(ctx);
     written.push(...result.written);
-    if (check && result.problems.length > 0) {
+    // Fatal in BOTH modes. Gated on `check` before, which meant a regenerate
+    // could silently ship a tree missing whatever emit() failed to write — the
+    // plugin's entry point, for instance.
+    if (result.problems.length > 0) {
       throw new Error(`[${m.name}] emit problems:\n  ${result.problems.join("\n  ")}`);
     }
+  }
+
+  if (leftovers.length > 0) {
+    throw new Error(
+      `[${m.name}] unsubstituted token(s) in built output:\n  ${leftovers.join("\n  ")}`,
+    );
   }
 
   return written;

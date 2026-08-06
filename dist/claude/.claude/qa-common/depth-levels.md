@@ -1,6 +1,7 @@
 # Depth Levels — Gherkin Coverage Exhaustiveness
 
-Depth is set by the active scope (see `.claude/scopes/`) and controls
+Depth is set by the active scope — the engine lists every scope and its depth
+in the `scopes_available` field of its `detect-scope` directive — and controls
 **how exhaustively** each acceptance criterion is covered in the generated
 `.feature` files. It does not change *which* stages run — that is the scope's
 membership — only how much the Feature File Generation stage produces per

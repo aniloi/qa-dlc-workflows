@@ -17,6 +17,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  entryCommand,
   harnessData,
   engineRootFromTool,
   hooksHealthDir,
@@ -69,6 +70,12 @@ interface Directive {
     consumes: string[];
     sensors: string[];
     stage_file: string;
+    /** Absolute (plugin) or project-relative (vendored) path to the lead agent's persona. */
+    agent_file: string;
+    /** The lead agent's tier-2 knowledge dir; "" when it ships none. */
+    knowledge_dir: string;
+    /** One manifest path per bound sensor, same order as `sensors`. */
+    sensor_files: string[];
     feature_files_total?: number;
     feature_files_written?: number;
   };
@@ -97,9 +104,39 @@ function readPersona(): string {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Engine-content paths: the engine emits them, prose never names them
+// ---------------------------------------------------------------------------
+// A stage file, an agent persona, a knowledge dir and a sensor manifest all live
+// inside the install tree. Prose cannot address them portably — a plugin's tree
+// sits in a version-stamped cache directory, and the model cannot expand
+// ${CLAUDE_PLUGIN_ROOT} in a Bash or Read call. The engine knows ENGINE_ROOT at
+// runtime, so it resolves these and hands them over in the directive. Stage prose
+// then says "read the file named in `stage_file`" rather than naming a path.
+//
+// Vendored installs keep emitting the short project-relative form, which is what
+// their prose and audit trail have always shown.
+function enginePath(...parts: string[]): string {
+  const hd = harnessData(ENGINE_ROOT);
+  return hd.mode === "plugin" ? join(ENGINE_ROOT, ...parts) : `${hd.harnessDir || ".claude"}/${parts.join("/")}`;
+}
+
 function stageFilePath(s: StageDefinition): string {
-  const hd = harnessData(ENGINE_ROOT).harnessDir || ".claude";
-  return `${hd}/qa-common/stages/${s.phase}/${s.slug}.md`;
+  return enginePath("qa-common", "stages", s.phase, `${s.slug}.md`);
+}
+
+function agentFilePath(agent: string): string {
+  return enginePath("agents", `${agent}.md`);
+}
+
+/** Tier-2 knowledge for an agent; "" when the agent ships none. */
+function knowledgeDirPath(agent: string): string {
+  const dir = join(ENGINE_ROOT, "knowledge", agent);
+  return existsSync(dir) ? enginePath("knowledge", agent) : "";
+}
+
+function sensorFilePaths(ids: string[]): string[] {
+  return ids.map((id) => enginePath("sensors", `qadlc-${id}.md`));
 }
 
 // ---------------------------------------------------------------------------
@@ -151,9 +188,7 @@ export function parseNextFlags(args: string[]): NextFlags {
  * Bash tool's PATH); vendored targets set the project-relative bun invocation.
  */
 function orchestrateCmd(sub: string): string {
-  const hd = harnessData(ENGINE_ROOT);
-  const entry = hd.entryCmd || `bun ${hd.harnessDir || ".claude"}/tools/qadlc-orchestrate.ts`;
-  return `${entry} ${sub}`;
+  return `${entryCommand(ENGINE_ROOT)} ${sub}`;
 }
 
 /** A read-only print directive (version/doctor/errors) — no follow-up command. */
@@ -202,7 +237,7 @@ function next(args: string[] = []): Directive {
       message:
         "No active QADLC session. Detect the scope from the user's request " +
         "(match keywords), confirm it, then run: " +
-        "qadlc-orchestrate.ts report --scope <name> [--depth <d>] [--story-source <mode>].",
+        `${orchestrateCmd("report --scope <name>")} [--depth <d>] [--story-source <mode>].`,
       conductor_persona: readPersona(),
       scopes_available: Object.entries(grid.scopes).map(([name, v]) => ({
         name,
@@ -284,6 +319,9 @@ function buildStagePayload(s: StageDefinition, state: QaState): NonNullable<Dire
     consumes: s.consumes,
     sensors: s.sensors,
     stage_file: stageFilePath(s),
+    agent_file: agentFilePath(s.lead_agent),
+    knowledge_dir: knowledgeDirPath(s.lead_agent),
+    sensor_files: sensorFilePaths(s.sensors),
     ...(s.foreach
       ? {
           feature_files_total: state.feature_files_total,

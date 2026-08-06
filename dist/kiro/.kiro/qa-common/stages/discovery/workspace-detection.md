@@ -60,7 +60,7 @@ closest match from the features directory and record the rationale.
 
 ### Step 5 — Record + advance
 Record the findings, then report completion:
-`bun .kiro/tools/qadlc-orchestrate.ts report --stage workspace-detection`.
+`bun .kiro/tools/qadlc.ts report --stage workspace-detection`.
 The engine advances to Story Analysis.
 
 ## Sensors

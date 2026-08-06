@@ -106,6 +106,26 @@ function main(): void {
     moved++;
   }
 
+  // Vendored installs shipped memory/ as ENGINE content. It is project-owned:
+  // move it into .qadlc/memory/ so a team's hand-authored conventions survive
+  // both this migration and the next upgrade of the install tree.
+  for (const harnessDir of [".claude", ".kiro"]) {
+    const from = join(projectRoot, harnessDir, "memory");
+    if (!existsSync(from)) continue;
+    const to = join(stateRoot(projectRoot), "memory");
+    if (existsSync(to)) {
+      say(`  SKIPPED        team memory: ${rel(to)} already exists`);
+      skipped++;
+      continue;
+    }
+    if (!dryRun) {
+      mkdirSync(stateRoot(projectRoot), { recursive: true });
+      renameSync(from, to);
+    }
+    say(`  ${dryRun ? "would move" : "moved"}      team memory: ${rel(from)} → ${rel(to)}`);
+    moved++;
+  }
+
   // The Phase 1 health dir also moved (out of the install tree). Clean up the
   // stale one so `doctor` does not read a log nothing writes to any more.
   for (const stale of [

@@ -15,6 +15,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import {
   auditPath,
+  engineRootFromTool,
+  entryCommand,
   errorMessage,
   planPath,
   recordHookDrop,
@@ -54,7 +56,7 @@ try {
     block(
       "QADLC plan gate: a .feature file was created before the Gherkin Plan was " +
         "approved. Present gherkin_plan.md, get explicit approval, and report it " +
-        "(qadlc-orchestrate.ts report --stage gherkin-plan --approved) before " +
+        `(${entryCommand(engineRootFromTool(import.meta.url))} report --stage gherkin-plan --approved) before ` +
         "writing feature files.",
     );
   }

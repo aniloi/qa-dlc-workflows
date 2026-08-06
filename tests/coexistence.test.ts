@@ -24,7 +24,7 @@ import { describe, expect, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 
 const REPO = join(import.meta.dir, "..");
 const DIST_CLAUDE = join(REPO, "dist", "claude", ".claude");
@@ -604,5 +604,190 @@ describe("plugin target", () => {
     if (r.error) return; // CLI unavailable in this environment — skip silently
     expect(r.stdout ?? "").toContain("Validation passed");
     expect(r.status).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. Prose portability (Phase 4)
+// ---------------------------------------------------------------------------
+describe("prose names one command and no engine paths", () => {
+  const CORE_MD = (() => {
+    const out: string[] = [];
+    const walk = (d: string): void => {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        if (e.isDirectory()) walk(join(d, e.name));
+        else if (e.name.endsWith(".md")) out.push(join(d, e.name));
+      }
+    };
+    walk(join(REPO, "core"));
+    // core/templates/ holds the onboarding skeleton, rendered only for vendored
+    // targets (QA-CLAUDE.md / QA-AGENTS.md). A project-relative engine path is
+    // correct there — those installs really do put the tree in the project — and
+    // it never reaches the plugin, which ships no onboarding doc.
+    return out.filter((f) => !f.includes(`${sep}templates${sep}`));
+  })();
+
+  test("no core prose names a tool by path", () => {
+    // The whole point of {{QADLC_CMD}}: a stage file must not encode the install
+    // layout, because a plugin's engine has no project-relative path at all.
+    const offenders: string[] = [];
+    for (const f of CORE_MD) {
+      const body = readFileSync(f, "utf-8");
+      if (/\{\{HARNESS_DIR\}\}\/tools\/|\.claude\/tools\/|\.kiro\/tools\//.test(body)) {
+        offenders.push(relative(REPO, f));
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test("no core prose points at engine content inside the install tree", () => {
+    // agents/, knowledge/, sensors/, scopes/ and stage files are all reachable
+    // only through directive fields now.
+    const offenders: string[] = [];
+    for (const f of CORE_MD) {
+      const body = readFileSync(f, "utf-8");
+      if (/\{\{HARNESS_DIR\}\}\/(agents|knowledge|sensors|scopes|qa-common)\//.test(body)) {
+        offenders.push(relative(REPO, f));
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test("built trees carry no unsubstituted token", () => {
+    for (const t of ["dist/claude/.claude", "dist/kiro/.kiro", "dist/plugin"]) {
+      const out: string[] = [];
+      const walk = (d: string): void => {
+        for (const e of readdirSync(d, { withFileTypes: true })) {
+          if (e.isDirectory()) walk(join(d, e.name));
+          else if (e.name.endsWith(".md")) out.push(join(d, e.name));
+        }
+      };
+      walk(join(REPO, t));
+      for (const f of out) {
+        expect(readFileSync(f, "utf-8")).not.toMatch(/\{\{[A-Z_]+\}\}/);
+      }
+    }
+  });
+
+  test("the entry command is the ONLY difference between vendored and plugin prose", () => {
+    // Not byte-identical — that was never reachable, since the invocation itself
+    // must differ. This is the achievable property: prose encodes the command,
+    // never the layout.
+    const A = join(REPO, "dist", "claude", ".claude");
+    const B = join(REPO, "dist", "plugin");
+    // Both entry-command spellings collapse to one marker. `qadlc` appears bare
+    // inside backticks as well as followed by a subcommand, so match the longer
+    // form first and then the word boundary — not a naive "qadlc " replace.
+    const norm = (s: string) =>
+      s
+        .replaceAll("bun .claude/tools/qadlc.ts", "@CMD@")
+        .replace(/(^|[^-\w])qadlc(?![-\w])/g, "$1@CMD@");
+    const unexplained: string[] = [];
+    const walk = (d: string, base: string, out: string[] = []): string[] => {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        if (e.isDirectory()) walk(join(d, e.name), base, out);
+        else if (e.name.endsWith(".md")) out.push(relative(base, join(d, e.name)));
+      }
+      return out;
+    };
+    for (const rel of walk(join(A, "qa-common"), A)) {
+      const a = readFileSync(join(A, rel), "utf-8");
+      let b: string;
+      try {
+        b = readFileSync(join(B, rel), "utf-8");
+      } catch {
+        continue;
+      }
+      if (a !== b && norm(a) !== norm(b)) unexplained.push(rel);
+    }
+    expect(unexplained).toEqual([]);
+  });
+});
+
+describe("directive-carried engine paths", () => {
+  test("run-stage carries agent_file, knowledge_dir and sensor_files", () => {
+    const p = v2Project();
+    const d = JSON.parse(
+      spawnSync("bun", [tool(p, "qadlc-orchestrate.ts"), "next"], { cwd: p, encoding: "utf-8" }).stdout ?? "{}",
+    );
+    expect(d.type).toBe("run-stage");
+    expect(d.stage.agent_file).toContain(d.stage.lead_agent);
+    expect(typeof d.stage.knowledge_dir).toBe("string");
+    expect(Array.isArray(d.stage.sensor_files)).toBe(true);
+    expect(d.stage.sensor_files.length).toBe(d.stage.sensors.length);
+  });
+
+  test("a plugin install emits ABSOLUTE engine paths the model can actually read", () => {
+    // Vendored prose could say `.claude/agents/x.md` because the tree is in the
+    // project. A plugin's is not, so the path has to be absolute or unusable.
+    const engine = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-dp-")));
+    cpSync(join(REPO, "dist", "plugin"), engine, { recursive: true });
+    const proj = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-dpp-")));
+    mkdirSync(join(proj, ".git"), { recursive: true });
+    const run = (args: string[]) =>
+      spawnSync(join(engine, "bin", "qadlc"), args, {
+        cwd: proj,
+        encoding: "utf-8",
+        env: withoutProjectEnv(),
+      });
+    run(["report", "--scope", "smoke"]);
+    const d = JSON.parse(run(["next"]).stdout ?? "{}");
+    for (const key of ["stage_file", "agent_file"]) {
+      expect(d.stage[key]).toStartWith(engine);
+      expect(existsSync(d.stage[key])).toBe(true);
+    }
+    for (const f of d.stage.sensor_files) expect(existsSync(f)).toBe(true);
+    if (d.stage.knowledge_dir) expect(existsSync(d.stage.knowledge_dir)).toBe(true);
+  });
+});
+
+describe("model-facing messages name the entry command", () => {
+  // A hardcoded `qadlc-orchestrate.ts …` in a message is unrunnable under a
+  // plugin install. These are the three messages that tell the model what to run.
+  function pluginInstall(): { proj: string; engine: string } {
+    const engine = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-msg-")));
+    cpSync(join(REPO, "dist", "plugin"), engine, { recursive: true });
+    const proj = realpathSync(mkdtempSync(join(tmpdir(), "qadlc-msgp-")));
+    mkdirSync(join(proj, ".git"), { recursive: true });
+    mkdirSync(join(proj, "features"), { recursive: true });
+    return { proj, engine };
+  }
+
+  test("detect-scope names `qadlc`, not a tool filename", () => {
+    const { proj, engine } = pluginInstall();
+    const d = JSON.parse(
+      spawnSync(join(engine, "bin", "qadlc"), ["next"], {
+        cwd: proj, encoding: "utf-8", env: withoutProjectEnv(),
+      }).stdout ?? "{}",
+    );
+    expect(d.message).toContain("qadlc report --scope");
+    expect(d.message).not.toContain("qadlc-orchestrate.ts");
+  });
+
+  test("the plan-gate block message names a runnable command", () => {
+    const { proj, engine } = pluginInstall();
+    const env = { ...withoutProjectEnv(), CLAUDE_PROJECT_DIR: proj };
+    spawnSync(join(engine, "bin", "qadlc"), ["report", "--scope", "smoke"], { cwd: proj, env });
+    writeFileSync(join(proj, "features", "x.feature"), FEATURE, "utf-8");
+    spawnSync("bun", [join(engine, "hooks", "qadlc-audit-logger.ts")], {
+      cwd: proj, env, input: JSON.stringify(writeEvent(proj, "features/x.feature")),
+    });
+    const out = spawnSync("bun", [join(engine, "hooks", "qadlc-stop.ts")], {
+      cwd: proj, env, input: "{}", encoding: "utf-8",
+    }).stdout ?? "";
+    expect(out).toContain('"decision":"block"');
+    expect(out).toContain("qadlc report --stage gherkin-plan --approved");
+    expect(out).not.toContain("qadlc-orchestrate.ts");
+  });
+
+  test("the session-start resume note names a runnable command", () => {
+    const { proj, engine } = pluginInstall();
+    const env = { ...withoutProjectEnv(), CLAUDE_PROJECT_DIR: proj };
+    spawnSync(join(engine, "bin", "qadlc"), ["report", "--scope", "smoke"], { cwd: proj, env });
+    const out = spawnSync("bun", [join(engine, "hooks", "qadlc-session-start.ts")], {
+      cwd: proj, env, input: JSON.stringify({ hook_event_name: "SessionStart" }), encoding: "utf-8",
+    }).stdout ?? "";
+    expect(out).toContain("qadlc next");
+    expect(out).not.toContain("qadlc-orchestrate.ts");
   });
 });

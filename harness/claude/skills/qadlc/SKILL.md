@@ -13,15 +13,15 @@ routing; you carry out one directive at a time.
 1. **Forward the user's flags.** Take everything the user typed after `/qadlc`
    and append it **unchanged** to your first `next` call. The flags ARE the
    user's intent — dropping them routes the workflow to the wrong place.
-   - `/qadlc` → `bun .claude/tools/qadlc-orchestrate.ts next`
-   - `/qadlc --resume` → `bun .claude/tools/qadlc-orchestrate.ts next --resume`
+   - `/qadlc` → `bun .claude/tools/qadlc.ts next`
+   - `/qadlc --resume` → `bun .claude/tools/qadlc.ts next --resume`
    - `/qadlc --scope smoke --depth Standard` → `next --scope smoke --depth Standard`
    - `/qadlc --stage story-analysis` → `next --stage story-analysis`
    - `/qadlc --doctor` / `--version` → `next --doctor` / `next --version`
 2. The first directive of a session carries the `conductor_persona` — that is the
    content of `.claude/qa-common/conductor.md`. Adopt it for the whole run.
 3. Do exactly the one move the directive names (see the directive table below).
-4. Call `bun .claude/tools/qadlc-orchestrate.ts report …` with the outcome.
+4. Call `bun .claude/tools/qadlc.ts report …` with the outcome.
 5. Repeat until the engine emits a `done` directive.
 
 ## Directives

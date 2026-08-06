@@ -1,7 +1,7 @@
 # Tagging Taxonomy (shared knowledge)
 
 > Tier-1 knowledge. The machine-checkable subset is enforced by the `tag-policy`
-> sensor; team overrides live in `/memory/team.md`.
+> sensor; team overrides live in `.qadlc/memory/team.md`.
 
 ## Scope tags (exactly one class required per shipping scenario)
 
@@ -16,7 +16,7 @@
 
 Match the component tags already used in the repo's existing feature files —
 e.g. `@account`, `@deposit`, `@auth`, `@schema`. The project's vocabulary is
-recorded in `/memory/project.md`.
+recorded in `.qadlc/memory/project.md`.
 
 ## Optional modifiers
 

@@ -23,7 +23,7 @@ recovering state after an interruption.
    SESSION_ENDED.
 
 3. Cross-check against current state
-   (`bun {{HARNESS_DIR}}/tools/qadlc-state.ts show`) and flag any divergence
+   (`{{QADLC_CMD}} state show`) and flag any divergence
    (e.g. the audit shows an approval the state doesn't reflect).
 
 4. If the state file was lost, use the replay to propose a reconstructed state

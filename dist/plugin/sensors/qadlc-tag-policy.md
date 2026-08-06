@@ -1,7 +1,7 @@
 ---
 id: tag-policy
 kind: deterministic
-command: bun /tools/qadlc-sensor-tag-policy.ts
+command: qadlc sensor-run tag-policy
 default_severity: advisory
 description: Every scenario carries at least one scope tag (@smoke/@regression/@e2e/@exploratory) and one component tag; in Jira mode, also @allure.label.jira=<KEY>
 category: gherkin-tags

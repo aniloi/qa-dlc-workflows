@@ -1,7 +1,7 @@
 ---
 id: step-existence
 kind: deterministic
-command: bun /tools/qadlc-sensor-step-existence.ts
+command: qadlc sensor-run step-existence
 default_severity: advisory
 description: Verifies every step in a .feature resolves to a known step definition, using the step catalog the step-inventory stage writes
 category: step-reuse

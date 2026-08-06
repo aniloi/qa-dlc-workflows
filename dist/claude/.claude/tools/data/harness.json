@@ -3,5 +3,5 @@
   "rulesSubdir": "rules",
   "version": "2.0.0",
   "mode": "vendored",
-  "entryCmd": "bun .claude/tools/qadlc-orchestrate.ts"
+  "entryCmd": "bun .claude/tools/qadlc.ts"
 }

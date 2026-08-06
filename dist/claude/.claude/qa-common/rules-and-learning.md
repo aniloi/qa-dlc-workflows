@@ -20,8 +20,8 @@ stage runs → conductor keeps a diary (.qadlc/diaries/<stage>/memory.md)
 
 | The learning is… | Write it to… | Effect |
 |---|---|---|
-| A standing preference ("always tag API scenarios `@api`") | `.claude/memory/team.md` (or `project.md` if repo-specific) | Loaded before every stage; wins over repo-derived conventions |
-| A repeatable check ("no scenario may exceed 12 steps") | a new `.claude/sensors/qadlc-<id>.md` manifest + a `qadlc-sensor-<id>.ts` tool + the `<id>` added to a stage's `sensors:` list | Fires automatically on matching file writes |
+| A standing preference ("always tag API scenarios `@api`") | `.qadlc/memory/team.md` (or `project.md` if repo-specific) | Loaded before every stage; wins over repo-derived conventions |
+| A repeatable check ("no scenario may exceed 12 steps") | a new sensor in the QADLC **source repo** (`core/sensors/qadlc-<id>.md` + `core/tools/qadlc-sensor-<id>.ts` + the `<id>` on a stage's `sensors:` list). The install tree is read-only, so record the rule in team memory now and open an issue against QADLC | Fires automatically on matching file writes, once released |
 
 ## Conflict rule
 
@@ -34,7 +34,7 @@ specific non-empty statement wins at load time.
 
 Stage files are framework artefacts — the loop never edits them. It writes into
 the *harness* (memory + sensors). After adding a sensor, recompile the graph
-(`bun .claude/tools/qadlc-graph.ts compile`) so the new binding takes
+(`bun .claude/tools/qadlc.ts graph compile`) so the new binding takes
 effect and the cross-check validates the id.
 
 ## Promoting a memory diary to team memory

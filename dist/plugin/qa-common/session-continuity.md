@@ -6,7 +6,7 @@ doing any work. The engine makes this deterministic: state lives in the tool-own
 
 ## Detection
 
-At workflow start, `bun /tools/qadlc-orchestrate.ts next`:
+At workflow start, `qadlc next`:
 - If `qa-state.md` exists with a scope, the engine emits the next unfinished stage
   (or the plan gate) directly — this **is** the resume.
 - If no state exists, the engine emits `detect-scope` (a fresh start).
