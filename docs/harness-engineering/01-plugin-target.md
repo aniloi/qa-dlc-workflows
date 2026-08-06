@@ -961,16 +961,14 @@ of turn-ends to manifest. Five regression tests now cover block-once, the
 `stop_hook_active` contract, gate clearing after approval, single-row recording,
 and a clean session never blocking.
 
-**Still open** (recommendations from the live test, not yet built):
+**Still open** — filed as issues rather than built, because each is a design
+decision about what QADLC *is*, not a defect:
 
-- `report --stage gherkin-plan --approved` is self-supplyable by the agent. Gating
-  it behind something an agent cannot forge is a design question worth its own
-  issue.
-- There is no `qadlc abort`. A botched session has no clean reset short of
-  `rm -rf .qadlc`.
-- The gate is detective, not preventive: the file lands and the audit row commits
-  before anything blocks. A `PreToolUse` hook would prevent instead — a real
-  change in character, worth deciding deliberately.
+| Issue | Question |
+|---|---|
+| [#4](https://github.com/aniloi/qa-dlc-workflows/issues/4) | `report --approved` is self-supplyable by the agent. `f1a23ae` removed the *pressure* to forge an approval; it did not remove the *capability* |
+| [#5](https://github.com/aniloi/qa-dlc-workflows/issues/5) | No `qadlc abort`. The only exits from a botched session destroy the audit trail or the user's files |
+| [#6](https://github.com/aniloi/qa-dlc-workflows/issues/6) | The gate detects rather than prevents. A `PreToolUse` hook would close the deadlock class entirely, but moves the ~55 ms cost onto every edit and makes false positives blocking. Depends on the §7.2 `if` verification |
 
 **Superseded — the note below applied to the session-less test only.** With no active session,
 the audit-logger's state guard exits 0, so "the hook fired and correctly no-op'd"
