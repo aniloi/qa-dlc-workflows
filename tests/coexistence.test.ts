@@ -597,14 +597,17 @@ describe("plugin target", () => {
     }
   });
 
+  // Spawns the full Claude Code CLI, so give it room: ~0.5s warm, but slower under
+  // load, and bun's default per-test timeout is 5s.
   test("claude plugin validate --strict passes", () => {
     const r = spawnSync("claude", ["plugin", "validate", DIST_PLUGIN, "--strict"], {
       encoding: "utf-8",
+      timeout: 60_000,
     });
     if (r.error) return; // CLI unavailable in this environment — skip silently
     expect(r.stdout ?? "").toContain("Validation passed");
     expect(r.status).toBe(0);
-  });
+  }, 60_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -916,4 +919,58 @@ describe("cede to vendored", () => {
     expect(r.stdout ?? "").toContain("v1");   // named, so the user knows which is running
     expect(r.stdout ?? "").toContain("Welcome back");
   });
+});
+
+// ---------------------------------------------------------------------------
+// 8. Marketplace (Phase 6)
+// ---------------------------------------------------------------------------
+describe("marketplace", () => {
+  const market = JSON.parse(
+    readFileSync(join(REPO, ".claude-plugin", "marketplace.json"), "utf-8"),
+  );
+  const manifest = JSON.parse(
+    readFileSync(join(REPO, "dist", "plugin", ".claude-plugin", "plugin.json"), "utf-8"),
+  );
+
+  test("the entry name matches the plugin's own name", () => {
+    // The marketplace entry name is what `enabledPlugins` keys and what users
+    // type; plugin.json's name is what components are namespaced under. They are
+    // authored in different places, so pin them together.
+    expect(market.plugins).toHaveLength(1);
+    expect(market.plugins[0].name).toBe(manifest.name);
+  });
+
+  test("the entry source resolves to the built plugin", () => {
+    expect(market.plugins[0].source).toBe("./dist/plugin");
+    expect(existsSync(join(REPO, "dist", "plugin", ".claude-plugin", "plugin.json"))).toBe(true);
+  });
+
+  test("the entry does NOT set version", () => {
+    // plugin.json's version always wins, silently. Setting it in both is how a
+    // stale manifest version masks the one you meant to publish.
+    expect(market.plugins[0].version).toBeUndefined();
+    expect(manifest.version).toBeTruthy();
+  });
+
+  test("the marketplace name is not an Anthropic-reserved one", () => {
+    const reserved = [
+      "claude-code-marketplace", "claude-code-plugins", "claude-plugins-official",
+      "claude-plugins-community", "claude-community", "anthropic-marketplace",
+      "anthropic-plugins", "agent-skills", "anthropic-agent-skills",
+      "knowledge-work-plugins", "life-sciences", "claude-for-legal",
+      "claude-for-financial-services", "financial-services-plugins",
+      "first-party-plugins", "healthcare",
+    ];
+    expect(reserved).not.toContain(market.name);
+  });
+
+  test("claude plugin validate accepts the marketplace", () => {
+    const r = spawnSync("claude", ["plugin", "validate", REPO, "--strict"], {
+      encoding: "utf-8",
+      timeout: 60_000,
+    });
+    if (r.error) return; // CLI unavailable — skip silently
+    expect(r.stdout ?? "").toContain("Validation passed");
+    expect(r.status).toBe(0);
+  }, 60_000);
 });

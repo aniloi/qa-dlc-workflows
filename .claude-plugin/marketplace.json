@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "qa-dlc-workflows",
+  "owner": {
+    "name": "aniloi",
+    "url": "https://github.com/aniloi"
+  },
+  "description": "QADLC — a plan-first, engine-driven Gherkin/BDD authoring workflow for Claude Code.",
+  "plugins": [
+    {
+      "name": "qadlc",
+      "source": "./dist/plugin",
+      "category": "testing",
+      "tags": ["qa", "bdd", "gherkin", "cucumber", "test-automation"]
+    }
+  ]
+}

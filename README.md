@@ -14,7 +14,7 @@ hooks enforce the plan gate — as code, not prose.
 
 | Capability | v1 | v2 |
 |---|---|---|
-| Install | manual copy-paste, six duplicated docs | author once in `core/`, generate per-harness trees, drift-guarded |
+| Install | manual copy-paste, six duplicated docs | author once in `core/`, generate per-harness trees, drift-guarded — or install once as a **Claude Code plugin** and get it in every repo |
 | Routing | the model follows markdown | a deterministic **engine** (`next`/`report`) drives a compiled stage graph |
 | Adaptivity | one fixed flow | **scopes** (smoke / single-story / regression / bugfix-repro / exploratory) × **depth** (Minimal/Standard/Comprehensive) |
 | Validation | the model re-reads rules | **sensors**: real Gherkin lint, tag-policy, duplicate-name, step-existence |
@@ -76,7 +76,34 @@ row + an `onboarding.fills.ts` — zero edits to `scripts/` or `core/`.
 
 ## Install (end user)
 
-Pick your harness and copy the generated tree into your project:
+### Claude Code plugin — recommended
+
+Installed once at **user scope**, so QADLC is available in every project,
+including ones that do not exist yet. No per-repo tree to re-import.
+
+```bash
+/plugin marketplace add aniloi/qa-dlc-workflows
+/plugin install qadlc@qa-dlc-workflows
+```
+
+Add the marketplace from its **git source**, as above. A marketplace added by
+direct URL to `marketplace.json` cannot resolve the relative plugin path, because
+only that one file gets downloaded.
+
+Then once per project:
+
+```bash
+qadlc init     # creates .qadlc/memory/{team,project}.md — commit these
+```
+
+That is the split: the engine is identical everywhere and lives in the plugin;
+your tagging vocabulary, step-definition paths and style reference live in your
+repo under `.qadlc/memory/`. See [INSTALL.md](harness/plugin/INSTALL.md) for
+migration from a vendored copy, upgrades, and coexistence with QADLC v1.
+
+### Vendored copy
+
+Still supported, and still the only option for Kiro. Copy the generated tree in:
 
 ```bash
 # Claude Code
@@ -88,7 +115,14 @@ cp -R dist/kiro/.kiro/ your-project/.kiro/
 cp    dist/kiro/QA-AGENTS.md your-project/QA-AGENTS.md
 ```
 
-Then, in your assistant:
+Then `bun .claude/tools/qadlc.ts init` in the project.
+
+> Do **not** run both. If a project vendors the tree and you also have the plugin
+> installed, the plugin's hooks detect it and stand down — plugin and project
+> hooks do not deduplicate, so without that they would each fire twice per edit.
+> `qadlc doctor` reports which one is live.
+
+### Using it
 
 ```
 Using QADLC, write feature files for CLM-123
@@ -97,6 +131,8 @@ Using QADLC, write feature files for CLM-123
 Pass flags after `/qadlc` to drive the engine directly: `--resume`,
 `--scope <name>`, `--depth <level>`, `--stage <slug>` / `--phase <name>` (jump),
 `--doctor`, `--version`.
+
+Everything QADLC writes at runtime lives under `.qadlc/` in your project.
 
 ## Runtime requirement
 

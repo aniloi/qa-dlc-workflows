@@ -445,8 +445,28 @@ harmless. Do not ship a plugin target that still substitutes the token.
 
 ### 7.2 Hook configuration and the per-edit cost
 
-Current shape: `PostToolUse` matcher `Write|Edit` with two handlers → two bun
-boots (~360 ms) on **every** file edit, whether or not QADLC is active.
+**Measured in Phase 6, and the issue's numbers were wrong.** The brief claimed
+~180 ms per hook spawn and ~360 ms per file edit. Actual, 20 runs each against
+`dist/plugin` on this machine (bun 1.3.14):
+
+| Case | ms/run |
+|---|---|
+| bare `bun` no-op — the floor | **41.6** |
+| `qadlc-audit-logger.ts`, unrelated file | 61.4 |
+| `qadlc-sensor-fire.ts`, unrelated file | 58.1 |
+| `qadlc-audit-logger.ts`, a real `.feature` | 59.7 |
+| `qadlc-stop.ts` | 56.8 |
+
+(The non-floor rows include ~8 ms of `bash -c` harness overhead, so the true
+per-hook figure is ~50–53 ms.)
+
+So it is **~55 ms per hook and ~110 ms per file edit**, not 180/360. Roughly
+**three quarters of that is bun's own startup**, and only ~11 ms is QADLC's logic.
+
+That ratio is the important part, and it confirms the issue's instinct while
+changing the reason: no amount of early-exit *inside* the TypeScript can help,
+because the cost is paid before our first line runs. Only not spawning the process
+helps.
 
 The `if` field is the real fix because it skips the spawn:
 
@@ -462,6 +482,37 @@ What the hooks actually care about:
 Since `if` takes exactly one rule and rules name a tool, this means separate
 `matcher: "Write"` and `matcher: "Edit"` groups with one handler per pattern.
 That is more JSON but it is generated, not hand-maintained.
+
+**Deliberately NOT shipped — the patch is ready and gated on live verification.**
+The exact change, for `harness/plugin/emit.ts`:
+
+```js
+// replace the single matcher "Write|Edit" group with, per tool ∈ {Write, Edit}:
+{ matcher: tool, if: `${tool}(**/*.feature)`,       hooks: [auditLogger, sensorFire] }
+{ matcher: tool, if: `${tool}(**/gherkin_plan.md)`, hooks: [auditLogger, sensorFire] }
+{ matcher: tool, if: `${tool}(**/.qadlc/**)`,       hooks: [auditLogger] }
+```
+
+Why it is not in yet: the docs describe the rule syntax (`"Edit(*.ts)"` matching
+TypeScript files) but there is **no way to verify the glob's matching semantics
+without a live Claude Code session**, and the failure mode is silent. A pattern
+that does not match means the audit trail stops being written and the sensors stop
+firing, with nothing to indicate it — the same class of failure this phase refused
+in Phase 3 for the same reason. Hedging by shipping both a narrowed and an
+un-narrowed handler is not available either: both would match and the hook would
+run twice.
+
+Blocked on one manual check: install with `--plugin-dir`, edit an unrelated file
+(expect no audit entry and no spawn), then write a `.feature` (expect an
+`ARTIFACT_CREATED` entry and sensor output). Once confirmed, the win is the full
+~110 ms on every non-QADLC edit, which is most edits.
+
+A verifiable alternative was considered and set aside: merging `qadlc-audit-logger`
+and `qadlc-sensor-fire` into one `PostToolUse` process halves the cost to ~55 ms
+with no reliance on unverified semantics, and removes a duplicate `readState()` per
+edit. It was not taken because it couples two concerns into one file for a smaller
+win than the `if` narrowing already promises. Reconsider if live verification of
+`if` fails.
 
 Two fixes that pay off regardless of how far `if` gets us:
 
@@ -739,7 +790,30 @@ the time comes.
 
 One caveat to document for teammates: a marketplace added by **direct URL to
 `marketplace.json`** cannot resolve relative paths, because only that one file is
-downloaded. Installation instructions must use the git source form.
+downloaded. Installation instructions must use the git source form — the README
+and `INSTALL.md` both say so explicitly.
+
+Shipped in Phase 6 and validated (`claude plugin validate . --strict`, exit 0):
+
+```json
+{
+  "name": "qa-dlc-workflows",
+  "owner": { "name": "aniloi", "url": "https://github.com/aniloi" },
+  "plugins": [
+    { "name": "qadlc", "source": "./dist/plugin", "category": "testing", "tags": [...] }
+  ]
+}
+```
+
+Note what is **absent**: no `version` on the entry. `plugin.json`'s value always
+wins and does so silently, so setting both is how a stale manifest version masks
+the one you meant to publish. A test asserts the entry carries no `version` and
+that its `name` matches `plugin.json`'s — they are authored in separate files and
+would otherwise drift.
+
+`marketplace.json` is hand-authored at the repo root rather than generated: it
+describes the repository *as* a marketplace, which is not a projection of `core/`
+and does not belong to any target's manifest.
 
 ### 9.2 Version handling — a trap worth avoiding
 
@@ -800,7 +874,7 @@ green (`bun scripts/package.ts --check`).
 | **3. Plugin target** ✅ | §7: `harness/plugin/` (manifest, `emit`, `bin-qadlc.ts`, SKILL.md, INSTALL.md), `plugin.json` + `hooks/hooks.json` + `bin/qadlc` @ 0o755, `core/tools/qadlc-init.ts`, mode comparison in `--check`, memory shipped as `templates/memory/` | **Done.** `claude plugin validate --strict` passes (exit 0; verified it exits 1 on a broken tree); plan gate blocks under a plugin install; `bun run check` green across 3 targets, 71 pass. **Not verified: a live `claude --plugin-dir` session** — see §11 |
 | **4. Docs/token** ✅ | §6: shared `core/tools/qadlc.ts` dispatcher + `{{QADLC_CMD}}` (17 refs), engine paths moved onto the `run-stage` payload (`agent_file`/`knowledge_dir`/`sensor_files`), memory unified at `.qadlc/memory/` in all targets, sensor-authoring prose repointed at the source repo, `entryCommand()` for model-facing messages, leftover-token build assertion | **Done.** `bun run check` green, 80 pass; validate --strict passes. 16 files still differ across targets and **all 16 differ only in the entry command** (asserted). `{{PROJECT_MEMORY_DIR}}` proved unnecessary; "byte-identical" was not achievable — see §6.2.1 |
 | **5. Coexistence** ✅ | §8.2 `shouldCedeToVendored()` wired into all five hooks (plugin mode only), `SessionStart` stand-down notice with the exact cleanup, `doctor` reports it, §8.3 trigger narrowing documented in the skill with a retirement marker, v1-present note | **Done.** Gate met **as an automated test, not a manual one**: with plugin + vendored both live, the plugin's audit-logger/sensor-fire/session-end write nothing, the plugin's Stop stays silent, and the vendored Stop still blocks — exactly one `ARTIFACT_` entry per edit. Plus: v1 alone does not trigger ceding (§8.2 correction). `bun run check` green, 87 pass |
-| **6. Publish** | §9.1 `marketplace.json`, install/upgrade docs, perf work from §7.2 | A teammate installs from a clean machine following only the written steps |
+| **6. Publish** ◐ | §9.1 `.claude-plugin/marketplace.json` (validates `--strict`), README rewritten around plugin-first install with the vendored path kept, `harness/plugin/INSTALL.md` for migration/upgrade/v1 coexistence, marketplace↔plugin.json consistency tests, §7.2 measured | **Mostly done.** `bun run check` green, 92 pass. **Two items outstanding:** the `if` narrowing is deliberately deferred (patch written, gated on a live session — §7.2), and the exit criterion itself is unmet: nobody has installed from a clean machine following only the written steps |
 | **7. Retirement** | Remove `.qa-dlc-rule-details/` + old `QA-CLAUDE.md` from `qa_automation` `main`; revert §8.3 narrowing | Separate PR in `qa_automation`, reviewed there |
 
 Phases 1–2 are pure refactors of the existing engine and are worth landing even
