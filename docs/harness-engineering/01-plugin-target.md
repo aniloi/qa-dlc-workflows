@@ -890,7 +890,7 @@ to the install tree.
 
 | Risk | Handling |
 |---|---|
-| **Live-session verification: partially closed.** Confirmed by hand with `claude --plugin-dir ./dist/plugin`: all three skills register (`qadlc:qadlc`, `qadlc:qadlc-replay`, `qadlc:qadlc-session-cost`), the invocation name comes from frontmatter `name` as intended, and **the §7.6 frontmatter fix is verified live** — the full trigger description renders, where before the fix every frontmatter field was silently dropped. Still unobserved: `bin/` on the Bash tool's PATH, `hooks/hooks.json` actually firing, and agent registration | Remaining check, same session: run `qadlc --version` (bare command → `bin/` on PATH), then edit an unrelated file (expect NO `.qadlc/audit.md` entry) and write a `.feature` (expect `ARTIFACT_CREATED`). That also unblocks the `if` patch in §7.2 |
+| **Live-session verification: mostly closed.** Confirmed by hand with `claude --plugin-dir ./dist/plugin` — see §11.1. Remaining: whether `hooks/hooks.json` actually fires, and agent registration | The session-less test cannot settle hook firing (see §11.1); it needs an **active** session so the state guard stops masking the answer. Same check unblocks the `if` patch in §7.2 |
 | `if`-narrowed hook matchers not shipped | Deliberate. `hooks.json` mirrors `settings.json`'s matcher exactly; the `if` pass is Phase 6 where it can be measured. A non-matching `if` would silently stop the audit-logger and sensors, which is worse than being slow |
 | `harnessDir: ""` interacting badly with the orphan scan | Checked — `join`/`relative` behave correctly (§7.1). Residual risk is the token-substitution trap, covered by the Phase 4 assertion |
 | Whether `if` can express a tool-agnostic rule (docs only show tool-scoped forms like `Edit(*.ts)`) | Assume tool-scoped; generate per-matcher groups. The §7.2 heartbeat fix is the unconditional win |
@@ -898,6 +898,42 @@ to the install tree.
 | Walk-up project resolution picks a parent repo in nested-git or monorepo layouts | `.qadlc/` is checked before `.git/`, so an initialized project always wins. `$QADLC_PROJECT_ROOT` is the escape hatch |
 | Plugin upgrade mid-session keeps the old `${CLAUDE_PLUGIN_ROOT}`; `/reload-plugins` is required | Document; `qadlc doctor` reports the running engine path and version |
 | bun as a prerequisite | Unchanged in substance, but now a one-time install-side requirement. `SessionStart` should fail loudly and once, not per hook |
+
+### 11.1 Live-session findings
+
+Run by hand: `claude --plugin-dir ./dist/plugin` in a scratch directory.
+
+**Confirmed:**
+
+| Claim | Evidence |
+|---|---|
+| Skills register, namespaced by plugin name | `/qadlc:qadlc`, `/qadlc:qadlc-replay`, `/qadlc:qadlc-session-cost` all listed |
+| Invocation name comes from frontmatter `name` | listed as `qadlc`, not the directory basename |
+| **§7.6 frontmatter fix works** | the full trigger description renders; before the fix every field was dropped |
+| **`bin/` lands on the Bash tool's PATH** | `qadlc --version` → `QADLC 2.0.0` as a bare command |
+| The engine's read-only directives round-trip | the `--version` reply carried `readonly: true` and the model reported it as such |
+| Skill content actually steers the model | unprompted, it noted the plan gate applies to `.feature` writes and said it would report if the hook disagreed |
+| **The Phase 1 heartbeat reorder works** | two file writes in a session-less repo created **no** `.qadlc/` at all. Before the reorder the audit-logger wrote its heartbeat ahead of the no-op checks, so any edit in any repo would have created `.qadlc/health/` |
+
+`bin/` on PATH was the single largest design risk in this plan. Had it failed,
+`entryCmd: "qadlc"` and the whole §6.2 token rewrite would have needed rethinking
+in favour of engine-emitted absolute paths.
+
+**Still open — and the session-less test cannot close it.** With no active session,
+the audit-logger's state guard exits 0, so "the hook fired and correctly no-op'd"
+and "the hook never fired" produce identical observations: no audit entry, no
+`.qadlc/`. Distinguishing them needs an **active** session, where a `.feature`
+write must produce an `ARTIFACT_CREATED` entry *and* trip the plan gate:
+
+```
+qadlc report --scope smoke      # creates .qadlc/qa-state.md + audit trail
+# then write any .feature and end the turn
+```
+
+Pass condition: `.qadlc/audit.md` gains an `ARTIFACT_CREATED` row **and** the Stop
+hook blocks with the plan-gate message. That single test exercises the audit-logger
+(PostToolUse) and the only enforcing hook at once. A block here is the *success*
+signal, not a failure.
 
 ## 12. What this plan does not change
 
