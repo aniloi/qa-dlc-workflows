@@ -3,5 +3,6 @@
   "rulesSubdir": "steering",
   "version": "2.0.0",
   "mode": "vendored",
-  "entryCmd": "bun .kiro/tools/qadlc.ts"
+  "entryCmd": "bun .kiro/tools/qadlc.ts",
+  "preflightCmd": "sh .kiro/tools/qadlc-preflight.sh"
 }

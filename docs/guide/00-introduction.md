@@ -76,6 +76,17 @@ Pass flags after `/qadlc`; the conductor forwards them to the engine unchanged:
 - `--doctor` — check the setup (bun, compiled data, state, hook health)
 - `--version` — print the framework version
 
+`--doctor` runs *on* bun, so it cannot report bun missing. That case is covered
+by the preflight, which is plain `sh`:
+
+```bash
+sh .claude/tools/qadlc-preflight.sh   # or .kiro/
+```
+
+The conductor runs it before its first `next` and stops the session if it fails,
+rather than quietly falling back to running the stage markdown by hand — a
+fallback that would produce feature files with the plan gate switched off.
+
 ## Runner commands
 
 - `qadlc-session-cost` — a compact status report of the current session

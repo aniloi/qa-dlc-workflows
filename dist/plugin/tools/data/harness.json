@@ -3,5 +3,6 @@
   "rulesSubdir": "rules",
   "version": "2.0.0",
   "mode": "plugin",
-  "entryCmd": "qadlc"
+  "entryCmd": "qadlc",
+  "preflightCmd": "qadlc-preflight"
 }

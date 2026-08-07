@@ -71,6 +71,17 @@ export type HarnessManifest = {
    * A plugin target overrides it with a bare executable name.
    */
   entryCmd?: string;
+  /**
+   * The command prose names to run the bun preflight, substituted for
+   * {{PREFLIGHT_CMD}}. Defaults to `sh <harnessDir>/tools/qadlc-preflight.sh`.
+   *
+   * A plugin target MUST override it. The preflight has to be runnable from the
+   * Bash tool — that is the whole point, since it is what the conductor calls
+   * before its first `next` — and the Bash tool cannot expand
+   * ${CLAUDE_PLUGIN_ROOT}, so no path into the plugin cache is nameable. The
+   * plugin ships a bin/ executable instead, exactly as it does for entryCmd.
+   */
+  preflightCmd?: string;
   /** core/<src> → <harnessDir>/<dst> projections. */
   coreDirs: DirMap[];
   /** harness/<name>/<src> → <harnessDir>/<dst> authored-file copies. */

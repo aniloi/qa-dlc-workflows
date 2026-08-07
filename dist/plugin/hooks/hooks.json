@@ -1,13 +1,16 @@
 {
-  "$comment": "QADLC plugin hooks. Advisory except Stop, which enforces the plan-approval gate and checkbox discipline. Exec form (args present) means no shell.",
+  "$comment": "QADLC plugin hooks. Advisory except Stop, which enforces the plan-approval gate and checkbox discipline. Exec form (args present) means no shell. Every handler runs behind qadlc-preflight.sh, which execs straight through when bun is present (stdout and exit status pass untouched, so Stop's decision:block still lands) and, when bun is missing, reports once at SessionStart (--brief) while the per-turn hooks stay silent (--quiet).",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "bun",
+            "command": "sh",
             "args": [
+              "${CLAUDE_PLUGIN_ROOT}/tools/qadlc-preflight.sh",
+              "--brief",
+              "bun",
               "${CLAUDE_PLUGIN_ROOT}/hooks/qadlc-session-start.ts"
             ],
             "timeout": 20
@@ -21,16 +24,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun",
+            "command": "sh",
             "args": [
+              "${CLAUDE_PLUGIN_ROOT}/tools/qadlc-preflight.sh",
+              "--quiet",
+              "bun",
               "${CLAUDE_PLUGIN_ROOT}/hooks/qadlc-audit-logger.ts"
             ],
             "timeout": 20
           },
           {
             "type": "command",
-            "command": "bun",
+            "command": "sh",
             "args": [
+              "${CLAUDE_PLUGIN_ROOT}/tools/qadlc-preflight.sh",
+              "--quiet",
+              "bun",
               "${CLAUDE_PLUGIN_ROOT}/hooks/qadlc-sensor-fire.ts"
             ],
             "timeout": 90
@@ -43,8 +52,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun",
+            "command": "sh",
             "args": [
+              "${CLAUDE_PLUGIN_ROOT}/tools/qadlc-preflight.sh",
+              "--quiet",
+              "bun",
               "${CLAUDE_PLUGIN_ROOT}/hooks/qadlc-stop.ts"
             ],
             "timeout": 30
@@ -57,8 +69,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun",
+            "command": "sh",
             "args": [
+              "${CLAUDE_PLUGIN_ROOT}/tools/qadlc-preflight.sh",
+              "--quiet",
+              "bun",
               "${CLAUDE_PLUGIN_ROOT}/hooks/qadlc-session-end.ts"
             ],
             "timeout": 5

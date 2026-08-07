@@ -73,32 +73,51 @@ const PLUGIN_JSON = {
  * checks.
  */
 function hooksJson(): unknown {
-  const handler = (hook: string, timeout: number): unknown => ({
+  // Every handler runs behind qadlc-preflight.sh, the port of the same wrapping
+  // harness/claude/settings.json uses. `sh` becomes the spawned binary and the
+  // script its first arg, so this stays exec form — no shell, nothing to quote.
+  //
+  // With bun present the wrapper execs through, passing stdout and exit status
+  // untouched, so Stop's decision:block still reaches Claude Code. With bun
+  // missing, SessionStart says so once (--brief) and the per-turn hooks stay
+  // silent (--quiet) instead of emitting `command not found` on every edit in a
+  // project that may not be running QADLC at all. Silence costs no enforcement:
+  // a hook that cannot start fails open however loudly it exits.
+  const handler = (hook: string, timeout: number, verbosity: "--brief" | "--quiet"): unknown => ({
     type: "command",
-    command: "bun",
-    args: [`\${CLAUDE_PLUGIN_ROOT}/hooks/${hook}`],
+    command: "sh",
+    args: [
+      "${CLAUDE_PLUGIN_ROOT}/tools/qadlc-preflight.sh",
+      verbosity,
+      "bun",
+      `\${CLAUDE_PLUGIN_ROOT}/hooks/${hook}`,
+    ],
     timeout,
   });
 
   return {
     $comment:
       "QADLC plugin hooks. Advisory except Stop, which enforces the plan-approval gate " +
-      "and checkbox discipline. Exec form (args present) means no shell.",
+      "and checkbox discipline. Exec form (args present) means no shell. Every handler " +
+      "runs behind qadlc-preflight.sh, which execs straight through when bun is present " +
+      "(stdout and exit status pass untouched, so Stop's decision:block still lands) and, " +
+      "when bun is missing, reports once at SessionStart (--brief) while the per-turn " +
+      "hooks stay silent (--quiet).",
     hooks: {
-      SessionStart: [{ hooks: [handler("qadlc-session-start.ts", 20)] }],
+      SessionStart: [{ hooks: [handler("qadlc-session-start.ts", 20, "--brief")] }],
       PostToolUse: [
         {
           matcher: "Write|Edit",
           hooks: [
-            handler("qadlc-audit-logger.ts", 20),
-            handler("qadlc-sensor-fire.ts", 90),
+            handler("qadlc-audit-logger.ts", 20, "--quiet"),
+            handler("qadlc-sensor-fire.ts", 90, "--quiet"),
           ],
         },
       ],
-      Stop: [{ hooks: [handler("qadlc-stop.ts", 30)] }],
+      Stop: [{ hooks: [handler("qadlc-stop.ts", 30, "--quiet")] }],
       // SessionEnd hooks share a 1.5s budget across ALL sources; a longer
       // per-hook timeout raises that budget, so keep this small on purpose.
-      SessionEnd: [{ hooks: [handler("qadlc-session-end.ts", 5)] }],
+      SessionEnd: [{ hooks: [handler("qadlc-session-end.ts", 5, "--quiet")] }],
     },
   };
 }
@@ -139,6 +158,23 @@ function emit(ctx: EmitContext): EmitResult {
     write("bin/qadlc", src, 0o755);
   } catch (e) {
     problems.push(`bin/qadlc: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  // bin/qadlc-preflight — the same trick for the same reason, one level simpler.
+  // The conductor must be able to run the preflight from the Bash tool, and the
+  // Bash tool cannot expand ${CLAUDE_PLUGIN_ROOT}, so the only reachable place
+  // is bin/ (which Claude Code puts on that PATH). The manifest's preflightCmd
+  // names it, so prose and this emission cannot drift apart.
+  //
+  // It is a byte-identical copy of tools/qadlc-preflight.sh, which also ships —
+  // hooks reference the tools/ copy, since ${CLAUDE_PLUGIN_ROOT} DOES resolve
+  // for them. Unlike bin/qadlc this needs no path self-location: it only probes
+  // for bun and, when present, execs the argv it was handed.
+  try {
+    const src = readFileSync(join(ctx.coreRoot, "tools", "qadlc-preflight.sh"), "utf-8");
+    write("bin/qadlc-preflight", src, 0o755);
+  } catch (e) {
+    problems.push(`bin/qadlc-preflight: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   return { written, problems };

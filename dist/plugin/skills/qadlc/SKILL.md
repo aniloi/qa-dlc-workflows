@@ -22,7 +22,14 @@ them — they are hand-authored.
 
 ## The loop
 
-1. **Forward the user's flags.** Take everything the user typed after `/qadlc`
+1. **Preflight the runtime.** Once per session, before your first `next`, run
+   `qadlc-preflight` (on your PATH beside `qadlc`). If it exits non-zero,
+   **STOP**: show its message and end the turn. Do NOT fall back to running the
+   stage markdown by hand — without bun the engine cannot route and the stop
+   hook cannot enforce the plan gate, so improvising produces `.feature` files
+   with the gate silently disabled. That is the one outcome QADLC exists to
+   prevent.
+2. **Forward the user's flags.** Take everything the user typed after `/qadlc`
    and append it **unchanged** to your first `next` call. The flags ARE the
    user's intent — dropping them routes the workflow to the wrong place.
    - `/qadlc` → `qadlc next`
@@ -30,11 +37,11 @@ them — they are hand-authored.
    - `/qadlc --scope smoke --depth Standard` → `qadlc next --scope smoke --depth Standard`
    - `/qadlc --stage story-analysis` → `qadlc next --stage story-analysis`
    - `/qadlc --doctor` / `--version` → `qadlc doctor` / `qadlc --version`
-2. The first directive of a session carries the `conductor_persona` — the full
+3. The first directive of a session carries the `conductor_persona` — the full
    conductor text, inlined. Adopt it for the whole run.
-3. Do exactly the one move the directive names (see the directive table below).
-4. Call `qadlc report …` with the outcome.
-5. Repeat until the engine emits a `done` directive.
+4. Do exactly the one move the directive names (see the directive table below).
+5. Call `qadlc report …` with the outcome.
+6. Repeat until the engine emits a `done` directive.
 
 ## Directives
 

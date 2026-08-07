@@ -14,6 +14,28 @@ curl -fsSL https://bun.sh/install | bash   # or: brew install oven-sh/bun/bun
 bun --version
 ```
 
+Once the plugin is installed, verify it the way QADLC actually will:
+
+```bash
+qadlc-preflight
+```
+
+Silent exit 0 means you are ready; anything else prints what to fix. Prefer this
+over `bun --version`, because the two can disagree. `bun --version` tests your
+*interactive* shell, while hooks and tool calls run in a **non-interactive** one
+that never reads `~/.zshrc` or `~/.bashrc` — so bun installed by a version
+manager (fnm, asdf, nvm, mise) can be visible to you and invisible to QADLC.
+`qadlc-preflight` runs in the same kind of shell the workflow does. If it
+disagrees with your terminal, put bun somewhere always on PATH:
+
+```bash
+sudo ln -s "$(command -v bun)" /usr/local/bin/bun
+```
+
+The conductor runs this check before its first `next` and refuses to start the
+workflow if it fails, rather than quietly authoring feature files with the
+plan-approval gate switched off.
+
 ## Install
 
 ```bash

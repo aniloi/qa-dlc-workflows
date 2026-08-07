@@ -52,6 +52,10 @@ const HARNESS_TOKEN = /\{\{HARNESS_DIR\}\}/g;
 // has no project-relative path to its engine, and the model cannot expand
 // ${CLAUDE_PLUGIN_ROOT} in a Bash command. See core/tools/qadlc.ts.
 const CMD_TOKEN = /\{\{QADLC_CMD\}\}/g;
+// {{PREFLIGHT_CMD}} — the bun preflight, named the same way and for the same
+// reason. It must be runnable from the Bash tool (the conductor calls it before
+// its first `next`), so a plugin cannot name a path into its own cache.
+const PREFLIGHT_TOKEN = /\{\{PREFLIGHT_CMD\}\}/g;
 const HARNESS_DATA = "tools/data/harness.json";
 /** Any token that must not survive into a built tree. */
 const LEFTOVER_TOKEN = /\{\{[A-Z_]+(?::[a-z_]+)?\}\}/g;
@@ -79,8 +83,11 @@ function discoverHarnessNames(): string[] {
 // Transform: the ONE class. Token substitution on .md prose; other files copied
 // verbatim.
 // ---------------------------------------------------------------------------
-function substituteToken(s: string, harnessDir: string, entryCmd = ""): string {
-  return s.replace(HARNESS_TOKEN, harnessDir).replace(CMD_TOKEN, entryCmd);
+function substituteToken(s: string, harnessDir: string, entryCmd = "", preflightCmd = ""): string {
+  return s
+    .replace(HARNESS_TOKEN, harnessDir)
+    .replace(CMD_TOKEN, entryCmd)
+    .replace(PREFLIGHT_TOKEN, preflightCmd);
 }
 
 function applyRulesRename(s: string, harnessDir: string, rulesRename: string | null): string {
@@ -94,9 +101,10 @@ function transform(
   harnessDir: string,
   rulesRename: string | null,
   entryCmd = "",
+  preflightCmd = "",
 ): Buffer {
   if (srcPath.endsWith(".md")) {
-    let s = substituteToken(content.toString("utf-8"), harnessDir, entryCmd);
+    let s = substituteToken(content.toString("utf-8"), harnessDir, entryCmd, preflightCmd);
     s = applyRulesRename(s, harnessDir, rulesRename);
     return Buffer.from(s, "utf-8");
   }
@@ -131,6 +139,7 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
   // entryCmd the engine reads back out of harness.json, so prose and runtime can
   // never name different commands.
   const entryCmd = m.entryCmd ?? `bun ${m.harnessDir}/tools/qadlc.ts`;
+  const preflightCmd = m.preflightCmd ?? `sh ${m.harnessDir}/tools/qadlc-preflight.sh`;
 
   // A token that survives into a built tree is a silent bug: the model would be
   // told to run a literal `{{QADLC_CMD}}` or read `{{HARNESS_DIR}}/…`. Worse for
@@ -159,7 +168,7 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
     for (const file of walk(srcDir)) {
       const rel = relative(srcDir, file);
       const outPath = join(harnessDirRoot, dstRel, rel);
-      emitFile(outPath, transform(file, readFileSync(file), m.harnessDir, m.rulesRename, entryCmd));
+      emitFile(outPath, transform(file, readFileSync(file), m.harnessDir, m.rulesRename, entryCmd, preflightCmd));
     }
   }
 
@@ -172,14 +181,14 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
     }
     const dstRel = projectRoot ? dst : join(m.harnessDir, renameDst(dst, m.rulesRename));
     const outPath = join(outRoot, dstRel);
-    emitFile(outPath, transform(srcPath, readFileSync(srcPath), m.harnessDir, m.rulesRename, entryCmd));
+    emitFile(outPath, transform(srcPath, readFileSync(srcPath), m.harnessDir, m.rulesRename, entryCmd, preflightCmd));
   }
 
   // 3. onboarding doc.
   if (m.onboarding) {
     const skeleton = readFileSync(ONBOARDING_SKELETON, "utf-8");
     let rendered = renderOnboarding(skeleton, m.onboarding.fills);
-    rendered = substituteToken(rendered, m.harnessDir, entryCmd);
+    rendered = substituteToken(rendered, m.harnessDir, entryCmd, preflightCmd);
     rendered = applyRulesRename(rendered, m.harnessDir, m.rulesRename);
     const dstRel = m.onboarding.projectRoot
       ? m.onboarding.dst
@@ -194,6 +203,7 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
     version: readVersion(),
     mode: m.mode ?? "vendored",
     entryCmd,
+    preflightCmd,
   };
   emitFile(
     join(harnessDirRoot, HARNESS_DATA),
@@ -222,7 +232,7 @@ function buildHarness(m: HarnessManifest, outRoot: string, check: boolean): stri
       harnessRoot: harnessSrcRoot,
       distRoot: outRoot,
       harnessDir: m.harnessDir,
-      substituteToken: (s) => substituteToken(s, m.harnessDir, entryCmd),
+      substituteToken: (s) => substituteToken(s, m.harnessDir, entryCmd, preflightCmd),
       check,
     };
     const result = m.emit(ctx);

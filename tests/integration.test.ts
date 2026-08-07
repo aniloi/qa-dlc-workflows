@@ -3,7 +3,7 @@
 // sensors, the stop-hook enforcement, and the packaging drift guard.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -275,6 +275,95 @@ describe("flag surface (/qadlc forwarded to next)", () => {
     const combo = JSON.parse(runIn(p, ["next", "--stage", "x", "--phase", "discovery"]).out);
     expect(combo.message).toContain("together");
     rmSync(p, { recursive: true, force: true });
+  });
+});
+
+describe("bun preflight", () => {
+  // A PATH with no bun on it, to simulate the machine this guard exists for.
+  // /bin and /usr/bin carry sh and the coreutils the script uses, never bun.
+  const NO_BUN = { ...process.env, PATH: "/usr/bin:/bin" };
+  const sh = (args: string[], env: typeof process.env) =>
+    spawnSync("sh", [tool("qadlc-preflight.sh"), ...args], { encoding: "utf-8", cwd: proj, env });
+
+  test("ships into every harness tree", () => {
+    for (const h of ["claude", "kiro"] as const) {
+      expect(existsSync(join(REPO, "dist", h, `.${h}`, "tools", "qadlc-preflight.sh"))).toBe(true);
+    }
+  });
+
+  test("passes silently when bun is on PATH", () => {
+    const r = sh([], process.env);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
+  test("execs through to the wrapped command when bun is present", () => {
+    const r = sh(["bun", "--version"], process.env);
+    expect(r.status).toBe(0);
+    expect(r.stdout.trim()).toMatch(/^\d+\.\d+/);
+  });
+
+  test("fails loudly when bun is missing", () => {
+    const r = sh([], NO_BUN);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toContain("QADLC PREFLIGHT FAILED");
+    // The message must name the silent-degradation trap, not just the missing
+    // binary — the whole point is stopping the conductor from carrying on.
+    expect(r.stdout).toContain("fails OPEN");
+    expect(r.stdout).toContain("DO NOT run the QADLC workflow from the stage markdown");
+  });
+
+  test("--brief reports a missing bun in one line, without failing the hook", () => {
+    const r = sh(["--brief", "bun", "--version"], NO_BUN);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("QADLC is inactive");
+    expect(r.stdout.trim().split("\n")).toHaveLength(1);
+  });
+
+  test("--quiet says nothing at all when bun is missing", () => {
+    const r = sh(["--quiet", "bun", "--version"], NO_BUN);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toBe("");
+  });
+
+  test("every hook is wired through it, at the right verbosity", () => {
+    const settings = JSON.parse(
+      readFileSync(join(REPO, "dist", "claude", ".claude", "settings.json"), "utf-8"),
+    );
+    const cmds: string[] = Object.values(settings.hooks as Record<string, { hooks: { command: string }[] }[]>)
+      .flat()
+      .flatMap((g) => g.hooks.map((h) => h.command));
+    expect(cmds.length).toBe(5);
+    // No hook may invoke bun directly — that is the bare `command not found`
+    // path this wrapper exists to remove.
+    for (const c of cmds) expect(c.startsWith("sh .claude/tools/qadlc-preflight.sh ")).toBe(true);
+    expect(cmds.filter((c) => c.includes(" --brief "))).toEqual([
+      "sh .claude/tools/qadlc-preflight.sh --brief bun .claude/hooks/qadlc-session-start.ts",
+    ]);
+    expect(cmds.filter((c) => c.includes(" --quiet ")).length).toBe(4);
+  });
+
+  test("wrapping does not weaken the stop hook: decision:block passes through", () => {
+    // The enforcement hook now runs behind the wrapper. With bun present the
+    // wrapper must exec straight through, leaving stdout and exit status
+    // untouched — otherwise the plan gate would be wrapped into silence.
+    const p2 = mkdtempSync(join(tmpdir(), "qadlc-wrap-"));
+    cpSync(DIST_KIRO, join(p2, ".kiro"), { recursive: true });
+    mkdirSync(join(p2, "features"), { recursive: true });
+    spawnSync("bun", [join(p2, ".kiro", "tools", "qadlc-orchestrate.ts"), "report", "--scope", "smoke"], { cwd: p2 });
+    writeFileSync(join(p2, "features", "x.feature"), "Feature: X\n  @smoke\n  Scenario: y\n    Given a\n    Then b\n");
+    spawnSync("bun", [join(p2, ".kiro", "hooks", "qadlc-audit-logger.ts")], {
+      cwd: p2,
+      input: JSON.stringify({ tool_name: "Write", tool_input: { file_path: join(p2, "features", "x.feature") } }),
+    });
+    const r = spawnSync(
+      "sh",
+      [join(p2, ".kiro", "tools", "qadlc-preflight.sh"), "--quiet", "bun", join(p2, ".kiro", "hooks", "qadlc-stop.ts")],
+      { cwd: p2, input: "{}", encoding: "utf-8" },
+    );
+    expect(r.stdout).toContain('"decision":"block"');
+    rmSync(p2, { recursive: true, force: true });
   });
 });
 

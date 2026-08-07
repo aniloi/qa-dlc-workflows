@@ -569,15 +569,42 @@ describe("plugin target", () => {
       .flatMap((g: any) => g.hooks as any[]);
     expect(handlers.length).toBeGreaterThan(0);
     for (const h of handlers) {
-      expect(h.command).toBe("bun");
+      // Still exec form — `sh` is the spawned binary and the script its first
+      // arg, so no shell parses any of this and nothing needs quoting.
+      expect(h.command).toBe("sh");
       expect(Array.isArray(h.args)).toBe(true);
-      expect(h.args[0]).toStartWith("${CLAUDE_PLUGIN_ROOT}/hooks/");
+      expect(h.args[0]).toBe("${CLAUDE_PLUGIN_ROOT}/tools/qadlc-preflight.sh");
+      expect(["--brief", "--quiet"]).toContain(h.args[1]);
+      expect(h.args[2]).toBe("bun");
+      expect(h.args[3]).toStartWith("${CLAUDE_PLUGIN_ROOT}/hooks/");
       expect(typeof h.timeout).toBe("number");
     }
     // every event the vendored settings.json wires must survive the move
     expect(Object.keys(cfg.hooks).sort()).toEqual([
       "PostToolUse", "SessionEnd", "SessionStart", "Stop",
     ]);
+  });
+
+  test("only SessionStart announces a missing bun; the per-turn hooks are silent", () => {
+    // The noise budget, asserted. A --brief on a per-turn hook would put the
+    // notice in front of every edit in a project that may not run QADLC at all.
+    const cfg = JSON.parse(readFileSync(join(DIST_PLUGIN, "hooks", "hooks.json"), "utf-8"));
+    const verbosity = (event: string): string[] =>
+      (cfg.hooks[event] as { hooks: { args: string[] }[] }[]).flatMap((g) => g.hooks.map((h) => h.args[1]));
+    expect(verbosity("SessionStart")).toEqual(["--brief"]);
+    for (const e of ["PostToolUse", "Stop", "SessionEnd"]) {
+      expect(verbosity(e).every((v) => v === "--quiet")).toBe(true);
+    }
+  });
+
+  test("the preflight ships to both places a plugin can reach it from", () => {
+    // hooks use tools/ (${CLAUDE_PLUGIN_ROOT} resolves for hook processes); the
+    // conductor uses bin/ (it does not resolve for the Bash tool). Same bytes,
+    // and bin/ must carry the exec bit or PATH lookup finds nothing runnable.
+    const tools = join(DIST_PLUGIN, "tools", "qadlc-preflight.sh");
+    const bin = join(DIST_PLUGIN, "bin", "qadlc-preflight");
+    expect(readFileSync(bin, "utf-8")).toBe(readFileSync(tools, "utf-8"));
+    expect(statSync(bin).mode & 0o111).toBeGreaterThan(0);
   });
 
   test("ships no settings.json and no rules/ stub", () => {
@@ -672,17 +699,22 @@ describe("prose names one command and no engine paths", () => {
     }
   });
 
-  test("the entry command is the ONLY difference between vendored and plugin prose", () => {
-    // Not byte-identical — that was never reachable, since the invocation itself
-    // must differ. This is the achievable property: prose encodes the command,
-    // never the layout.
+  test("the per-target command names are the ONLY difference between vendored and plugin prose", () => {
+    // Not byte-identical — that was never reachable, since the invocations
+    // themselves must differ. This is the achievable property: prose encodes
+    // the COMMANDS, never the layout. Two of them now: the engine entry point
+    // and the bun preflight, each substituted from the manifest.
     const A = join(REPO, "dist", "claude", ".claude");
     const B = join(REPO, "dist", "plugin");
-    // Both entry-command spellings collapse to one marker. `qadlc` appears bare
-    // inside backticks as well as followed by a subcommand, so match the longer
-    // form first and then the word boundary — not a naive "qadlc " replace.
+    // Each command's two spellings collapse to one marker. Preflight first: its
+    // vendored spelling contains the engine's path shape, and its plugin
+    // spelling contains `qadlc` as a prefix. The bare-`qadlc` rule below is
+    // already guarded by (?![-\w]) so it cannot chew into `qadlc-preflight`,
+    // but ordering it first keeps that safety from being load-bearing.
     const norm = (s: string) =>
       s
+        .replaceAll("sh .claude/tools/qadlc-preflight.sh", "@PREFLIGHT@")
+        .replaceAll("qadlc-preflight", "@PREFLIGHT@")
         .replaceAll("bun .claude/tools/qadlc.ts", "@CMD@")
         .replace(/(^|[^-\w])qadlc(?![-\w])/g, "$1@CMD@");
     const unexplained: string[] = [];
