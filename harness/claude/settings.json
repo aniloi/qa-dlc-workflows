@@ -1,10 +1,10 @@
 {
-  "$comment": "QADLC Claude Code settings. Hooks are advisory except the Stop hook, which enforces the plan-approval gate and checkbox discipline. Paths are relative to the project root; Claude Code runs them with bun. SessionStart runs through qadlc-preflight.sh so a missing bun reports itself once per session instead of surfacing as four bare 'command not found' errors with the plan gate silently failing open; --advisory keeps that report from becoming a harness error.",
+  "$comment": "QADLC Claude Code settings. Hooks are advisory except the Stop hook, which enforces the plan-approval gate and checkbox discipline. Paths are relative to the project root; Claude Code runs them with bun. Every hook is wrapped in qadlc-preflight.sh, which execs straight through when bun is present (stdout and exit status pass untouched, so the Stop hook's decision:block still reaches the harness). When bun is missing, SessionStart reports it once per session (--brief) and the per-turn hooks stay silent (--quiet) rather than emitting four 'command not found' errors on every edit in a repo whose owner may not be running QADLC at all.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "sh .claude/tools/qadlc-preflight.sh --advisory bun .claude/hooks/qadlc-session-start.ts" }
+          { "type": "command", "command": "sh .claude/tools/qadlc-preflight.sh --brief bun .claude/hooks/qadlc-session-start.ts" }
         ]
       }
     ],
@@ -12,22 +12,22 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "bun .claude/hooks/qadlc-audit-logger.ts" },
-          { "type": "command", "command": "bun .claude/hooks/qadlc-sensor-fire.ts" }
+          { "type": "command", "command": "sh .claude/tools/qadlc-preflight.sh --quiet bun .claude/hooks/qadlc-audit-logger.ts" },
+          { "type": "command", "command": "sh .claude/tools/qadlc-preflight.sh --quiet bun .claude/hooks/qadlc-sensor-fire.ts" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "bun .claude/hooks/qadlc-stop.ts" }
+          { "type": "command", "command": "sh .claude/tools/qadlc-preflight.sh --quiet bun .claude/hooks/qadlc-stop.ts" }
         ]
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
-          { "type": "command", "command": "bun .claude/hooks/qadlc-session-end.ts" }
+          { "type": "command", "command": "sh .claude/tools/qadlc-preflight.sh --quiet bun .claude/hooks/qadlc-session-end.ts" }
         ]
       }
     ]

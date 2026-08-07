@@ -13,13 +13,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **bun preflight (`tools/qadlc-preflight.sh`)** — a plain POSIX `sh` runtime
   gate, the one QADLC entry point that does not itself need bun and can
   therefore report bun missing. The conductor runs it before its first `next`
-  and **stops** the session if it fails; Claude Code's `SessionStart` hook runs
-  through it (`--advisory`), so a bun-less project explains itself once per
-  session instead of emitting four bare `command not found` errors. Closes a
-  silent-degradation hole: without bun every hook exited 127, which the harness
-  treats as a non-blocking error, so the stop hook's plan-approval gate failed
-  **open** while the conductor still held enough markdown to improvise
-  ungated `.feature` files. `--doctor` cannot cover this case — it runs on bun.
+  and **stops** the session if it fails. Closes a silent-degradation hole:
+  without bun every hook exited 127, which the harness treats as a non-blocking
+  error, so the stop hook's plan-approval gate failed **open** while the
+  conductor still held enough markdown to improvise ungated `.feature` files.
+  `--doctor` cannot cover this case — it runs on bun.
+- **Every Claude Code hook now runs behind the preflight.** With bun present the
+  wrapper execs straight through, passing stdout and exit status untouched (the
+  Stop hook's `decision:block` still reaches the harness). With bun missing,
+  `SessionStart` reports it once per session in one line (`--brief`) and the
+  per-turn hooks stay silent (`--quiet`), instead of four bare `command not
+  found` errors on every edit in a repo whose owner may not be running QADLC at
+  all. This hides no enforcement: a hook that cannot start fails open whether it
+  exits 127 loudly or 0 silently.
 - **Requirements + Verify sections** in the onboarding skeleton, so the bun
   prerequisite reaches the user's project (`QA-CLAUDE.md` / `QA-AGENTS.md`)
   rather than living only in the repo README. Both call out the

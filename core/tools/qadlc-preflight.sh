@@ -15,24 +15,48 @@
 # always invoke it as `sh <path>`.
 #
 # Usage:
-#   sh <harness-dir>/tools/qadlc-preflight.sh                    probe only
-#   sh <harness-dir>/tools/qadlc-preflight.sh cmd [args…]        probe, then exec cmd
-#   sh <harness-dir>/tools/qadlc-preflight.sh --advisory cmd …   never fail (hook use)
+#   sh <harness-dir>/tools/qadlc-preflight.sh                  probe only
+#   sh <harness-dir>/tools/qadlc-preflight.sh cmd [args…]      probe, then exec cmd
+#   sh <harness-dir>/tools/qadlc-preflight.sh --brief cmd …    one-line notice, exit 0
+#   sh <harness-dir>/tools/qadlc-preflight.sh --quiet cmd …    say nothing, exit 0
 #
-# Exit: 0 when bun is present (or the exec'd command's own status); 1 when bun
-# is missing. With --advisory a missing bun still reports but exits 0, for hook
-# call sites that must not turn a warning into a harness error.
+# Three verbosity modes, because the call sites want different things from the
+# same probe. When bun IS present all three are identical: exec the wrapped
+# command, passing its stdout and exit status through untouched (so the stop
+# hook's decision:block still reaches the harness). They differ only on a
+# missing bun:
+#
+#   default  full diagnosis, exit 1. The deliberate probe — a human or the
+#            conductor asked, so give them everything.
+#   --brief  one-line notice, exit 0. SessionStart: enough to explain the
+#            situation once per session without a wall of text in a session
+#            that may have nothing to do with QADLC.
+#   --quiet  nothing at all, exit 0. The per-turn and per-edit hooks, where the
+#            alternative is four `command not found` errors on every edit in a
+#            repo whose owner may not be running QADLC at all. This hides no
+#            enforcement: a hook that cannot start fails open whether it exits
+#            127 loudly or 0 silently. --brief already carried the news.
 
-advisory=0
-if [ "$1" = "--advisory" ]; then
-  advisory=1
-  shift
-fi
+mode=full
+case "$1" in
+  --brief) mode=brief; shift ;;
+  --quiet) mode=quiet; shift ;;
+esac
 
 if command -v bun >/dev/null 2>&1; then
   [ "$#" -eq 0 ] && exit 0
   exec "$@"
 fi
+
+case "$mode" in
+  quiet)
+    exit 0
+    ;;
+  brief)
+    printf 'QADLC is inactive — bun is not on PATH, so the engine and the plan-approval gate it enforces cannot run. Install bun (https://bun.sh), or run `sh %s` for the full diagnosis.\n' "$0"
+    exit 0
+    ;;
+esac
 
 cat <<'EOF'
 QADLC PREFLIGHT FAILED — bun is not on PATH.
@@ -58,6 +82,4 @@ line is invisible here. Put bun somewhere always on PATH:
 EOF
 
 printf '\nRe-run this check:\n  sh %s\n' "$0"
-
-[ "$advisory" -eq 1 ] && exit 0
 exit 1

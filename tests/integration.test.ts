@@ -313,20 +313,57 @@ describe("bun preflight", () => {
     expect(r.stdout).toContain("DO NOT run the QADLC workflow from the stage markdown");
   });
 
-  test("--advisory reports a missing bun without failing the hook", () => {
-    const r = sh(["--advisory", "bun", "--version"], NO_BUN);
+  test("--brief reports a missing bun in one line, without failing the hook", () => {
+    const r = sh(["--brief", "bun", "--version"], NO_BUN);
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain("QADLC PREFLIGHT FAILED");
+    expect(r.stdout).toContain("QADLC is inactive");
+    expect(r.stdout.trim().split("\n")).toHaveLength(1);
   });
 
-  test("the SessionStart hook is wired through it", () => {
+  test("--quiet says nothing at all when bun is missing", () => {
+    const r = sh(["--quiet", "bun", "--version"], NO_BUN);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toBe("");
+  });
+
+  test("every hook is wired through it, at the right verbosity", () => {
     const settings = JSON.parse(
       readFileSync(join(REPO, "dist", "claude", ".claude", "settings.json"), "utf-8"),
     );
-    const cmd = settings.hooks.SessionStart[0].hooks[0].command;
-    expect(cmd).toBe(
-      "sh .claude/tools/qadlc-preflight.sh --advisory bun .claude/hooks/qadlc-session-start.ts",
+    const cmds: string[] = Object.values(settings.hooks as Record<string, { hooks: { command: string }[] }[]>)
+      .flat()
+      .flatMap((g) => g.hooks.map((h) => h.command));
+    expect(cmds.length).toBe(5);
+    // No hook may invoke bun directly — that is the bare `command not found`
+    // path this wrapper exists to remove.
+    for (const c of cmds) expect(c.startsWith("sh .claude/tools/qadlc-preflight.sh ")).toBe(true);
+    expect(cmds.filter((c) => c.includes(" --brief "))).toEqual([
+      "sh .claude/tools/qadlc-preflight.sh --brief bun .claude/hooks/qadlc-session-start.ts",
+    ]);
+    expect(cmds.filter((c) => c.includes(" --quiet ")).length).toBe(4);
+  });
+
+  test("wrapping does not weaken the stop hook: decision:block passes through", () => {
+    // The enforcement hook now runs behind the wrapper. With bun present the
+    // wrapper must exec straight through, leaving stdout and exit status
+    // untouched — otherwise the plan gate would be wrapped into silence.
+    const p2 = mkdtempSync(join(tmpdir(), "qadlc-wrap-"));
+    cpSync(DIST_KIRO, join(p2, ".kiro"), { recursive: true });
+    mkdirSync(join(p2, "features"), { recursive: true });
+    spawnSync("bun", [join(p2, ".kiro", "tools", "qadlc-orchestrate.ts"), "report", "--scope", "smoke"], { cwd: p2 });
+    writeFileSync(join(p2, "features", "x.feature"), "Feature: X\n  @smoke\n  Scenario: y\n    Given a\n    Then b\n");
+    spawnSync("bun", [join(p2, ".kiro", "hooks", "qadlc-audit-logger.ts")], {
+      cwd: p2,
+      input: JSON.stringify({ tool_name: "Write", tool_input: { file_path: join(p2, "features", "x.feature") } }),
+    });
+    const r = spawnSync(
+      "sh",
+      [join(p2, ".kiro", "tools", "qadlc-preflight.sh"), "--quiet", "bun", join(p2, ".kiro", "hooks", "qadlc-stop.ts")],
+      { cwd: p2, input: "{}", encoding: "utf-8" },
     );
+    expect(r.stdout).toContain('"decision":"block"');
+    rmSync(p2, { recursive: true, force: true });
   });
 });
 
