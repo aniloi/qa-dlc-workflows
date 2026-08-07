@@ -53,7 +53,7 @@ case "$mode" in
     exit 0
     ;;
   brief)
-    printf 'QADLC is inactive — bun is not on PATH, so the engine and the plan-approval gate it enforces cannot run. Install bun (https://bun.sh), or run `sh %s` for the full diagnosis.\n' "$0"
+    printf 'QADLC is inactive — bun is not on PATH, so the engine and the plan-approval gate it enforces cannot run. Install bun (https://bun.sh), or run "sh %s" for the full diagnosis.\n' "$0"
     exit 0
     ;;
 esac
