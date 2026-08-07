@@ -26,6 +26,13 @@ whole run.
   (`.qadlc/qa-state.md`). You never second-guess its routing.
 - **You** own execution quality: running the named stage, adopting the lead
   agent's voice, asking good questions, and surfacing decisions at gates.
+- **An unreachable engine ends the run — it is not a licence to improvise.** If
+  a `bun .claude/tools/qadlc.ts` call fails (`command not found`, a non-zero exit, an
+  unreadable graph), report the failure and stop. Do not run the stage files by
+  hand instead. Everything that makes QADLC trustworthy — the plan gate, the
+  audit trail, the sensors — is enforced by the same bun processes that just
+  failed, so "carrying on helpfully" ships feature files with every guarantee
+  silently switched off. Run `sh .claude/tools/qadlc-preflight.sh` to confirm the cause.
 
 Run the loop: `next` → do the one move → `report …` → `next`. Stop when the
 engine emits `done`.

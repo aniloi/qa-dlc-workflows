@@ -34,6 +34,12 @@ const manifest: HarnessManifest = {
   harnessDir: "",
   mode: "plugin",
   entryCmd: "qadlc",
+  // Same reasoning as entryCmd, and the same solution: the conductor runs the
+  // preflight from the Bash tool, which cannot expand ${CLAUDE_PLUGIN_ROOT}, so
+  // there is no nameable path into the plugin cache. emit() ships it as a second
+  // bin/ executable. It must stay plain sh — a preflight that needed bun could
+  // not report bun missing.
+  preflightCmd: "qadlc-preflight",
 
   coreDirs: [
     { src: "tools", dst: "tools" },

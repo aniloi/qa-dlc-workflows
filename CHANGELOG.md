@@ -10,6 +10,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- **bun preflight (`tools/qadlc-preflight.sh`)** — a plain POSIX `sh` runtime
+  gate, the one QADLC entry point that does not itself need bun and can
+  therefore report bun missing. The conductor runs it before its first `next`
+  and **stops** the session if it fails. Closes a silent-degradation hole:
+  without bun every hook exited 127, which the harness treats as a non-blocking
+  error, so the stop hook's plan-approval gate failed **open** while the
+  conductor still held enough markdown to improvise ungated `.feature` files.
+  `--doctor` cannot cover this case — it runs on bun.
+- **The preflight reaches the plugin target too**, via a new `{{PREFLIGHT_CMD}}`
+  token alongside `{{QADLC_CMD}}` — prose names the command, never the layout.
+  Vendored targets resolve it to `sh <harnessDir>/tools/qadlc-preflight.sh`; the
+  plugin resolves it to a bare `qadlc-preflight`, emitted as a second `bin/`
+  executable because the Bash tool cannot expand `${CLAUDE_PLUGIN_ROOT}` and the
+  conductor has to be able to run it. The plugin's `hooks.json` wraps every
+  handler the same way `settings.json` does, staying in exec form (`sh` is the
+  binary, the script its first arg — no shell, nothing to quote).
+- **Every Claude Code hook now runs behind the preflight.** With bun present the
+  wrapper execs straight through, passing stdout and exit status untouched (the
+  Stop hook's `decision:block` still reaches the harness). With bun missing,
+  `SessionStart` reports it once per session in one line (`--brief`) and the
+  per-turn hooks stay silent (`--quiet`), instead of four bare `command not
+  found` errors on every edit in a repo whose owner may not be running QADLC at
+  all. This hides no enforcement: a hook that cannot start fails open whether it
+  exits 127 loudly or 0 silently.
+- **Requirements + Verify sections** in the onboarding skeleton, so the bun
+  prerequisite reaches the user's project (`QA-CLAUDE.md` / `QA-AGENTS.md`)
+  rather than living only in the repo README. Both call out the
+  non-interactive-shell PATH case, where `bun --version` works in the user's
+  terminal but hooks and tool calls still cannot find it.
 - **`/qadlc` flag surface** — the conductor forwards everything after `/qadlc` to
   the engine's `next` unchanged: `--resume` (resume with a choice menu),
   `--scope <name>` / `--depth <level>` (set or, mid-flight, change scope and

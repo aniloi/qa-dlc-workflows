@@ -10,7 +10,13 @@ routing; you carry out one directive at a time.
 
 ## The loop
 
-1. **Forward the user's flags.** Take everything the user typed after `/qadlc`
+1. **Preflight the runtime.** Once per session, before your first `next`, run
+   `sh .kiro/tools/qadlc-preflight.sh`. If it exits non-zero, **STOP**: show
+   its message and end the turn. Do NOT fall back to running the stage markdown
+   by hand — without bun the engine cannot route and the stop hook cannot
+   enforce the plan gate, so improvising produces `.feature` files with the
+   gate silently disabled. That is the one outcome QADLC exists to prevent.
+2. **Forward the user's flags.** Take everything the user typed after `/qadlc`
    and append it **unchanged** to your first `next` call. The flags ARE the
    user's intent — dropping them routes the workflow to the wrong place.
    - `/qadlc` → `bun .kiro/tools/qadlc.ts next`
@@ -18,11 +24,11 @@ routing; you carry out one directive at a time.
    - `/qadlc --scope smoke --depth Standard` → `next --scope smoke --depth Standard`
    - `/qadlc --stage story-analysis` → `next --stage story-analysis`
    - `/qadlc --doctor` / `--version` → `next --doctor` / `next --version`
-2. The first directive of a session carries the `conductor_persona` — that is the
+3. The first directive of a session carries the `conductor_persona` — that is the
    content of `.kiro/qa-common/conductor.md`. Adopt it for the whole run.
-3. Do exactly the one move the directive names (see the directive table below).
-4. Call `bun .kiro/tools/qadlc.ts report …` with the outcome.
-5. Repeat until the engine emits a `done` directive.
+4. Do exactly the one move the directive names (see the directive table below).
+5. Call `bun .kiro/tools/qadlc.ts report …` with the outcome.
+6. Repeat until the engine emits a `done` directive.
 
 ## Directives
 
