@@ -100,9 +100,23 @@ Pass flags after `/qadlc` to drive the engine directly: `--resume`,
 
 ## Runtime requirement
 
-The tools, hooks, and sensors run on **bun**. Harnesses without shell/hook
-support (Cursor-rules, Copilot) can still load the markdown (conductor, stages,
-scopes) as a degraded, non-deterministic tier — the engine and sensors need bun.
+The tools, hooks, and sensors run on **bun**. Verify an install with the one
+QADLC command that does not itself need bun:
+
+```bash
+sh your-project/.claude/tools/qadlc-preflight.sh   # or .kiro/
+```
+
+The conductor runs this before its first `next` and stops on failure. That stop
+is deliberate: without bun the framework does not degrade gracefully, it
+degrades *silently* — every hook exits 127, which the harness treats as a
+non-blocking error, so the stop hook's plan gate fails open while the conductor
+still holds enough markdown to improvise feature files that nothing gated.
+
+Harnesses without shell/hook support (Cursor-rules, Copilot) can still load the
+markdown (conductor, stages, scopes) as a degraded, non-deterministic tier —
+but that is a tier you *choose*, not one you fall into. The engine and sensors
+need bun.
 
 ## Docs
 
