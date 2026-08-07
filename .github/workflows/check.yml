@@ -1,0 +1,57 @@
+name: check
+
+# The guard the README has always described but nothing ran. `bun run check` is
+# typecheck + the dist/ drift guard + the test suite; until now it fired only
+# when someone remembered to type it.
+#
+# main is deliberately excluded: it carries the v1 pure-markdown rule tree, which
+# has no package.json and nothing to check. Every other branch is fair game, and
+# the pull_request filter matches the BASE branch, so a PR into main is skipped
+# while a PR into v2 or plugin-packaging runs.
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+# A new push to the same ref supersedes the run in flight.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # `latest`, not a pin: the framework tells end users to install bun with
+      # no version constraint (curl -fsSL https://bun.sh/install | bash), so CI
+      # should exercise the bun they will actually get. A bun release that
+      # breaks us is something we want to hear about from CI, not from a user.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # typecheck → drift guard (dist/ regenerated and byte-identical) → 44 tests
+      - run: bun run check
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # qadlc-preflight.sh sits in front of every hook and is the one component
+      # that must work on a machine with no bun, so it never gets exercised by
+      # the bun test suite the way the TypeScript does. Lint it as POSIX sh —
+      # the shebang is #!/bin/sh and it is invoked as `sh <path>`.
+      - name: shellcheck POSIX shell sources
+        run: |
+          shellcheck --version
+          find core harness -name '*.sh' -print0 | xargs -0 -r shellcheck --shell=sh
