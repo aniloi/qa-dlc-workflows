@@ -106,6 +106,107 @@ describe("sensors", () => {
   });
 });
 
+describe("step catalog → step-existence", () => {
+  const STEPS_JAVA = `package steps;
+public class AccountSteps {
+  @Given("I am logged in as {string}")
+  public void a() {}
+  @When("I deposit {double} {string} into my account")
+  public void b() {}
+  @Then("^I see (\\\\d+) item(s)?$")
+  public void c() {}
+}
+`;
+  // Uses the {double} slot, an outline placeholder, and the pluralised regex
+  // step — all three false-flagged before the catalog generator existed.
+  const GOOD = `@smoke
+Feature: Deposits
+
+  @account @smoke
+  Scenario Outline: deposit lands
+    Given I am logged in as "trader"
+    When I deposit <amount> "USD" into my account
+    Then I see 1 item
+  Examples:
+    | amount |
+    | 100.50 |
+`;
+  const BAD = GOOD.replace("Then I see 1 item", "Then I teleport the account sideways");
+
+  function scaffold(): string {
+    const p = mkdtempSync(join(tmpdir(), "qadlc-catalog-"));
+    cpSync(DIST_KIRO, join(p, ".kiro"), { recursive: true });
+    mkdirSync(join(p, "features"), { recursive: true });
+    mkdirSync(join(p, "src", "test", "java", "steps"), { recursive: true });
+    writeFileSync(join(p, "src", "test", "java", "steps", "AccountSteps.java"), STEPS_JAVA);
+    return p;
+  }
+  const inProj = (p: string, t: string, args: string[]) => {
+    const r = spawnSync("bun", [join(p, ".kiro", "tools", t), ...args], { cwd: p, encoding: "utf-8" });
+    return { out: r.stdout ?? "", err: r.stderr ?? "", code: r.status ?? 0 };
+  };
+
+  test("generated catalog turns the sensor on: conforming file passes, invented step flagged", () => {
+    const p = scaffold();
+    const build = inProj(p, "qadlc-build-step-catalog.ts", ["--steps-dir", "src/test/java/steps"]);
+    expect(build.code).toBe(0);
+    const summary = JSON.parse(build.out);
+    expect(summary.definitions).toBe(3);
+    expect(summary.steps).toBe(4); // item / items expanded from `item(s)?`
+    expect(existsSync(join(p, "aidlc-docs", ".qadlc", "step-catalog.json"))).toBe(true);
+
+    writeFileSync(join(p, "features", "deposits.feature"), GOOD);
+    const ok = inProj(p, "qadlc-sensor-step-existence.ts", ["--stage", "feature-generation", "--file-path", "features/deposits.feature"]);
+    expect(ok.code).toBe(0);
+    expect(JSON.parse(ok.out).pass).toBe(true);
+
+    writeFileSync(join(p, "features", "deposits.feature"), BAD);
+    const flagged = JSON.parse(
+      inProj(p, "qadlc-sensor-step-existence.ts", ["--stage", "feature-generation", "--file-path", "features/deposits.feature"]).out,
+    );
+    expect(flagged.findings_count).toBe(1);
+    expect(flagged.findings[0].rule).toBe("unknown-step");
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("without a catalog the sensor exits 127 (advisory pass, no false flags)", () => {
+    const p = scaffold();
+    writeFileSync(join(p, "features", "deposits.feature"), BAD);
+    const r = inProj(p, "qadlc-sensor-step-existence.ts", ["--stage", "feature-generation", "--file-path", "features/deposits.feature"]);
+    expect(r.code).toBe(127);
+    expect(r.err).toContain("no-step-catalog");
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("finding no definitions fails instead of writing an empty catalog", () => {
+    const p = scaffold();
+    mkdirSync(join(p, "empty"), { recursive: true });
+    const r = inProj(p, "qadlc-build-step-catalog.ts", ["--steps-dir", "empty"]);
+    expect(r.code).toBe(1);
+    expect(r.err).toContain("no step definitions found");
+    expect(existsSync(join(p, "aidlc-docs", ".qadlc", "step-catalog.json"))).toBe(false);
+    // and a missing steps dir is an error, not an empty catalog
+    expect(inProj(p, "qadlc-build-step-catalog.ts", ["--steps-dir", "nope"]).code).toBe(1);
+    expect(inProj(p, "qadlc-build-step-catalog.ts", []).code).toBe(1);
+    rmSync(p, { recursive: true, force: true });
+  });
+
+  test("--check reports a stale catalog", () => {
+    const p = scaffold();
+    const args = ["--steps-dir", "src/test/java/steps"];
+    inProj(p, "qadlc-build-step-catalog.ts", args);
+    expect(inProj(p, "qadlc-build-step-catalog.ts", [...args, "--check"]).code).toBe(0);
+    writeFileSync(
+      join(p, "src", "test", "java", "steps", "MoreSteps.java"),
+      '@Given("I have a new step")\npublic void d() {}\n',
+    );
+    const stale = inProj(p, "qadlc-build-step-catalog.ts", [...args, "--check"]);
+    expect(stale.code).toBe(1);
+    expect(stale.err).toContain("stale");
+    rmSync(p, { recursive: true, force: true });
+  });
+});
+
 describe("stop-hook enforcement", () => {
   test("blocks when a feature precedes plan approval", () => {
     const p2 = mkdtempSync(join(tmpdir(), "qadlc-stop-"));

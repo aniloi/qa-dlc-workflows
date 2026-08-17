@@ -42,6 +42,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `--depth <level>` (depth config change) and `--jump <slug>` (recompute
   `completed[]` so the target runs next). The framework version is baked into
   `harness.json` so `--version` can report it.
+- **Step-catalog generator (`tools/qadlc-build-step-catalog.ts`)** — the
+  `step-existence` sensor's oracle is now generated from the repo's own step
+  definitions instead of hand-authored. Reads Cucumber definitions in Java/Kotlin,
+  JS/TS, Python/behave, and Ruby; normalizes legacy regex (`^…$`, `"([^"]*)"`,
+  `(\d+)`) into the placeholder vocabulary; expands optional text (`item(s)`) and
+  alternation (`a/b`) into concrete entries; `--check` guards staleness. It exits
+  non-zero on a missing steps dir or zero definitions found rather than writing an
+  empty catalog, because an empty catalog is indistinguishable from a passing one.
+  Step Inventory now runs it as a mandatory step (it had been "optionally emit"
+  guidance no run actually followed, which left `step-existence` advisory-passing
+  every file — a check that looked green because it never ran).
+
+### Fixed
+
+- **`step-existence` false-flagged `Scenario Outline` steps.** `compilePattern`
+  ended with a `<[^>]+>` → `.+` replacement applied to the *catalog entry*, which
+  never contains a placeholder — the feature's step text carries `<account>`, and
+  that function never saw it. Every outline step whose placeholder sat in a typed
+  slot was reported `unknown-step`. Outline steps are now matched the way Cucumber
+  matches them: Examples rows are substituted first, with a relaxed
+  `<name>`-in-any-slot fallback for a column the table is missing. Measured on a
+  641-file suite: 3340 findings across 140 files → 1582 across 45, with the
+  remainder spot-checked as true positives (including a corrupted step line and
+  two step-text typos the sensor had been hiding).
+- **`step-existence` did not know `{double}`, `{long}`, `{byte}`, `{short}`,
+  `{bigdecimal}`, `{biginteger}`, or the anonymous `{}`** — only
+  `{int}`/`{float}`/`{string}`/`{word}` compiled, so any step using another
+  built-in type required the literal text `{double}` to match. Project-defined
+  parameter types (`{account}`) now compile permissively instead of never
+  matching.
+- **`step-existence` skipped `Background` steps**, where an invented step breaks
+  every scenario in the file. It now checks all scenarios.
 
 ---
 
