@@ -110,7 +110,8 @@
       "gate": false,
       "foreach": false,
       "produces": [
-        "step-inventory"
+        "step-inventory",
+        "step-catalog"
       ],
       "consumes": [
         "workspace-record"
@@ -127,7 +128,7 @@
         "exploratory"
       ],
       "inputs": "All step-definition classes under the steps directory (READ ONLY)",
-      "outputs": "step-inventory grouped by domain, with Cucumber expressions / regex and parameterization",
+      "outputs": "step-inventory grouped by domain, with Cucumber expressions / regex and parameterization; the machine-readable step catalog at aidlc-docs/.qadlc/step-catalog.json",
       "order": 4
     },
     {

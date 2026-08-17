@@ -35,6 +35,7 @@ from `harness/*/manifest.ts`.
 | `qadlc-audit.ts` | append-only `audit.md`; `appendAuditEntry()` |
 | `qadlc-orchestrate.ts` | the **engine**: `next` (emit directive) / `report` (record outcome) |
 | `qadlc-gherkin.ts` | dep-free `.feature` parser shared by sensors |
+| `qadlc-build-step-catalog.ts` | Step Inventory's generator: step definitions → `.qadlc/step-catalog.json`, the `step-existence` oracle |
 | `qadlc-sensor-*.ts` | per-sensor scripts (`--stage`/`--file-path` → JSON) |
 | `qadlc-sensor.ts` | dispatcher: resolve a stage's sensors, filter by `matches`, run, write detail, audit |
 

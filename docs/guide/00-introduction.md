@@ -51,9 +51,10 @@ This is enforced by the engine and the stop hook — not left to the model's mem
 ## Sensors (automatic quality checks)
 
 On every `.feature` write, deterministic sensors fire: structural `gherkin-lint`,
-`tag-policy`, `step-existence` (against your step catalog), and
-`duplicate-scenario-name`. They are advisory — findings surface at the next gate
-in `aidlc-docs/.qadlc-sensors/`, they never silently block you.
+`tag-policy`, `step-existence` (against a catalog generated from your own step
+definitions during Step Inventory), and `duplicate-scenario-name`. They are
+advisory — findings surface at the next gate in `aidlc-docs/.qadlc-sensors/`, they
+never silently block you.
 
 ## State, audit, resume
 

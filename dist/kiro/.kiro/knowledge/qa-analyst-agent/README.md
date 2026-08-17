@@ -16,8 +16,11 @@
 - Read step-definition annotations (`@Given`/`@When`/`@Then` in Java/Kotlin;
   decorators/attributes in other stacks) and record each pattern verbatim.
 - Group by domain; note parameter types.
-- Optionally emit `aidlc-docs/.qadlc/step-catalog.json` (`{ "steps": [...] }`)
-  so the `step-existence` sensor can check reuse deterministically.
+- Generate `aidlc-docs/.qadlc/step-catalog.json` with
+  `qadlc-build-step-catalog.ts` — the human inventory above is for your reading,
+  that file is the `step-existence` sensor's oracle. Never hand-write it: a
+  catalog entry no definition backs makes an invented step pass the sensor, and no
+  catalog at all makes the sensor advisory-pass every file.
 
 ## Ambiguity signals
 

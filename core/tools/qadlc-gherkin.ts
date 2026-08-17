@@ -10,12 +10,19 @@ export interface Step {
   line: number;
 }
 
+/** One `Examples:` table — its header cells and its data rows. */
+export interface ExamplesBlock {
+  headers: string[];
+  rows: string[][];
+}
+
 export interface Scenario {
   type: "Scenario" | "Scenario Outline" | "Background";
   name: string;
   tags: string[];
   steps: Step[];
   examplesRows: number; // data rows under Examples (0 if none / not an outline)
+  examples: ExamplesBlock[]; // the tables themselves — step-existence substitutes them
   line: number;
 }
 
@@ -34,12 +41,22 @@ export function parseFeature(raw: string): Feature {
   let pendingTags: string[] = [];
   let current: Scenario | null = null;
   let inExamples = false;
-  let examplesHeaderSeen = false;
+  let currentExamples: ExamplesBlock | null = null;
 
   const pushCurrent = (): void => {
     if (current) feature.scenarios.push(current);
     current = null;
+    currentExamples = null;
+    inExamples = false;
   };
+
+  // `| a | b |` → ["a", "b"]. Escaped pipes (\|) stay inside their cell.
+  const cells = (row: string): string[] =>
+    row
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split(/(?<!\\)\|/)
+      .map((c) => c.trim().replace(/\\\|/g, "|"));
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
@@ -66,42 +83,43 @@ export function parseFeature(raw: string): Feature {
     const bgMatch = line.match(/^Background:\s*(.*)$/);
     if (bgMatch) {
       pushCurrent();
-      current = { type: "Background", name: bgMatch[1].trim(), tags: [], steps: [], examplesRows: 0, line: lineNo };
+      current = { type: "Background", name: bgMatch[1].trim(), tags: [], steps: [], examplesRows: 0, examples: [], line: lineNo };
       pendingTags = [];
-      inExamples = false;
       continue;
     }
 
     const outlineMatch = line.match(/^Scenario Outline:\s*(.*)$/);
     if (outlineMatch) {
       pushCurrent();
-      current = { type: "Scenario Outline", name: outlineMatch[1].trim(), tags: pendingTags, steps: [], examplesRows: 0, line: lineNo };
+      current = { type: "Scenario Outline", name: outlineMatch[1].trim(), tags: pendingTags, steps: [], examplesRows: 0, examples: [], line: lineNo };
       pendingTags = [];
-      inExamples = false;
-      examplesHeaderSeen = false;
       continue;
     }
 
     const scenarioMatch = line.match(/^Scenario:\s*(.*)$/);
     if (scenarioMatch) {
       pushCurrent();
-      current = { type: "Scenario", name: scenarioMatch[1].trim(), tags: pendingTags, steps: [], examplesRows: 0, line: lineNo };
+      current = { type: "Scenario", name: scenarioMatch[1].trim(), tags: pendingTags, steps: [], examplesRows: 0, examples: [], line: lineNo };
       pendingTags = [];
-      inExamples = false;
       continue;
     }
 
     if (/^Examples:/.test(line)) {
       inExamples = true;
-      examplesHeaderSeen = false;
+      currentExamples = null; // the next table row is this block's header
       continue;
     }
 
     // Table rows (Examples data or data tables).
     if (line.startsWith("|")) {
       if (inExamples && current) {
-        if (!examplesHeaderSeen) examplesHeaderSeen = true; // first row = header
-        else current.examplesRows += 1; // subsequent rows = data
+        if (!currentExamples) {
+          currentExamples = { headers: cells(line), rows: [] }; // first row = header
+          current.examples.push(currentExamples);
+        } else {
+          currentExamples.rows.push(cells(line)); // subsequent rows = data
+          current.examplesRows += 1;
+        }
       }
       continue;
     }
@@ -110,6 +128,7 @@ export function parseFeature(raw: string): Feature {
     if (stepKw && current) {
       current.steps.push({ keyword: stepKw, text: line.slice(stepKw.length).trim(), line: lineNo });
       inExamples = false;
+      currentExamples = null;
       continue;
     }
     // Anything else (docstrings, free text) is ignored by these sensors.
@@ -121,4 +140,26 @@ export function parseFeature(raw: string): Feature {
 /** Concrete (non-Background) scenarios only. */
 export function realScenarios(f: Feature): Scenario[] {
   return f.scenarios.filter((s) => s.type !== "Background");
+}
+
+/**
+ * Every concrete form a step text takes once an outline's Examples rows are
+ * substituted for its `<placeholder>`s — what Cucumber actually matches against
+ * step definitions. Returns the text unchanged when it carries no placeholder or
+ * when no table supplies its columns; a placeholder with no matching header is
+ * left in place so callers can fall back to a relaxed match.
+ */
+export function expandOutlineStep(text: string, examples: ExamplesBlock[]): string[] {
+  if (!text.includes("<") || examples.length === 0) return [text];
+  const out = new Set<string>();
+  for (const block of examples) {
+    for (const row of block.rows) {
+      let t = text;
+      block.headers.forEach((h, i) => {
+        if (i < row.length) t = t.split(`<${h}>`).join(row[i]);
+      });
+      out.add(t);
+    }
+  }
+  return out.size > 0 ? [...out] : [text];
 }
